@@ -34,7 +34,7 @@ def summand(x2, rvec, l1,m1,l2,m2):
 ################################################################################
 # Compute FULL sum w/o splitting pole/smooth parts
 ################################################################################
-def sum_full_nnk(E,nnP,L,nnk, Mijk=[1,1,1], waves='spd'):
+def sum_full_nnk(E,nnP,L,nnk, Mijk=[1,1,1], waves='sp'):
   [Mi, Mj, Mk] = Mijk
   W = defns.get_lm_size(waves)
   twopibyL = 2*pi/L
@@ -81,7 +81,7 @@ def sum_full_nnk(E,nnP,L,nnk, Mijk=[1,1,1], waves='spd'):
 ################################################################################
 # Compute PV integral
 ################################################################################
-def int_nnk(L,gam,x2,waves='spd'):
+def int_nnk(L,gam,x2,waves='sp'):
   alpha = get_alpha()
   W = defns.get_lm_size(waves)
 
@@ -119,7 +119,7 @@ def int_nnk(L,gam,x2,waves='spd'):
 ################################################################################
 # Full \wt{F}^{(i)}(k) matrix w/o splitting pole/smooth terms
 ################################################################################
-def F_i_nnk(E,nnP,L,nnk, Mijk=[1,1,1], waves='spd'):
+def F_i_nnk(E,nnP,L,nnk, Mijk=[1,1,1], waves='sp'):
   [Mi,Mj,Mk] = Mijk
 
   twopibyL = 2*pi/L
@@ -179,7 +179,7 @@ def F_full_2plus1_scratch(E,nnP,L, M12=[1,1], waves='sp', nnk_lists_12=None, dia
 ################################################################################
 # Full ND matrix \wt{F} computed from scratch
 ################################################################################
-def F_full_ND_scratch(E,nnP,L, M123=[1,1,1], waves='spd', nnk_lists_123=None, diag_only=True):
+def F_full_ND_scratch(E,nnP,L, M123=[1,1,1], waves='s', nnk_lists_123=None, diag_only=True):
   F_diag = []
   for i in range(3):
     Mijk = defns.get_Mijk(M123,i)

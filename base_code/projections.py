@@ -80,7 +80,7 @@ def P_irrep_subspace_2pt(nnP2,I):
   elist, vlist = LA.eig(P_I)
   ivec = [i for i,e in enumerate(elist) if abs(e-1)<1e-13]
   if len(ivec) != int(round(np.trace(P_I))):
-    print('Error in P_irrep_subspace: wrong subspace dimension')
+    print('Error in P_irrep_subspace: bspace dimension')
   Psub = defns.chop(vlist[:,ivec].real)
   if ivec==[]:
     return Psub
@@ -101,7 +101,7 @@ def irrep_proj_2pt(M,nnP,I):
 # Full projection matrices (P^I in notes)
 
 # Single shell & single l for given nnP
-def P_irrep_o_l(E,L,nnP,I,shell,l,Mijk=[1,1,1],nnk_list=None,waves='sp', parity=-1, lblock=False):
+def P_irrep_o_l(E,L,nnP,I,shell,l,Mijk=[1,1,1],waves='sp', parity=-1, lblock=False, nnk_list=None):
   if nnk_list==None:
     nnk_list = defns.shell_nnk_nnP_list(E,L,nnP,shell, Mijk=Mijk)
   Lk = GT.little_group(shell)
@@ -131,7 +131,7 @@ def P_irrep_o_l(E,L,nnP,I,shell,l,Mijk=[1,1,1],nnk_list=None,waves='sp', parity=
           elif l==2:
             P_block[4:,4:] += par*GT.chi(R,I,nnP) * GT.Dmat22(R)
             P_block = defns.chop(P_block)
-
+        #print(shell,l,I,P_block*d_I/48)
         P_k2.append(P_block)
       P_shell.append(P_k2)
 

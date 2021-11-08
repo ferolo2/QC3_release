@@ -8,8 +8,9 @@ pi = np.pi; sqrt=np.sqrt; LA=np.linalg
 # Set up paths for loading QC modules
 from pathlib import Path
 cwd = Path(os.getcwd())
-sys.path.insert(0,str(cwd/'F3'))
-sys.path.insert(0,str(cwd/'Kdf3'))
+sys.path.insert(0,str(cwd/'base_code'))
+sys.path.insert(0,str(cwd/'base_code/F3'))
+sys.path.insert(0,str(cwd/'base_code/Kdf3'))
 
 # QC modules
 import defns, group_theory_defns as GT, projections as proj
@@ -24,8 +25,8 @@ M1,M2 = [1.,0.5]; M12 = [M1,M2] # The 3-pt. system masses are [M1,M1,M2]
                                 # *NOTE*: WE ALWAYS RESCALE BY M1, SO SET M1=1
 parity = -1                     # Particle parity (-1 for pseudoscalars, +1 for scalars)
 L = 5                           # Box size (in units of 1/M1)
-nnP = [1,2,0]                   # 3-pt. FV spatial momentum (integer-valued)
-E = 3.7                         # Total 3-pt. energy in moving frame (in units of M1)
+nnP = [0,0,0]                   # 3-pt. FV spatial momentum (integer-valued)
+E = 3.1                      # Total 3-pt. energy in moving frame (in units of M1)
 
 Ecm = defns.E_to_Ecm(E,L,nnP)   # Total CM 3-pt. energy (in units of M1)
 Pvec = 2*pi/L*np.array(nnP)     # 3-pt. spatial momentum (in units of M1)
@@ -62,12 +63,14 @@ print('flavor 1 spectators:',nnk_list_1, '\nflavor 2 spectators:', nnk_list_2,'\
 ################################################################################
 # Compute desired QC matrices
 ################################################################################
-# F = F_fast.F_full_2plus1_scratch(E,nnP,L, M12=M12, waves=waves, nnk_lists_12=nnk_lists_12, diag_only=False)
-# K2i = K2i_mat.K2_inv_mat_2plus1(E,L,nnP,f_qcot_1sp,f_qcot_2s, M12=M12, waves=waves, nnk_lists_12=nnk_lists_12, IPV=0)
-# G = G_mov.Gmat_2plus1(E,L,nnP, M12=M12, nnk_lists_12=None, waves=waves)
-# J =  defns.chop( 1/3*np.eye(len(F)) - LA.inv(K2i + F + G) @ F )
-# F3 = F @ J
-F3 = F3_mat.F3mat_2plus1(E,L,nnP, f_qcot_1sp,f_qcot_2s, M12=M12,waves=waves,nnk_lists_12=nnk_lists_12)
+#F3 = F3_mat.F3mat_2plus1(E,L,nnP, f_qcot_1sp,f_qcot_2s, M12=M12,waves=waves,nnk_lists_12=nnk_lists_12)
+
+F = F_fast.F_full_2plus1_scratch(E,nnP,L, M12=M12, waves=waves, nnk_lists_12=nnk_lists_12, diag_only=False)
+K2i = K2i_mat.K2_inv_mat_2plus1(E,L,nnP,f_qcot_1sp,f_qcot_2s, M12=M12, waves=waves, nnk_lists_12=nnk_lists_12, IPV=0)
+G = G_mov.Gmat_2plus1(E,L,nnP, M12=M12, nnk_lists_12=None, waves=waves)
+J =  defns.chop( 1/3*np.eye(len(F)) - LA.inv(K2i + F + G) @ F )
+F3 = F @ J
+
 K3 = K3main.K3mat_2plus1(E,L,nnP, K3iso,K3B_par,K3E_par, M12=M12,waves=waves,nnk_lists_12=nnk_lists_12)
 F3i = LA.inv(F3)
 
@@ -77,11 +80,12 @@ QC3_mat = F3i + K3            # QC3 matrix as defined in the paper
 ################################################################################
 # Perform desired irrep projections
 ################################################################################
+#print(M12,)
 for name,M in [('QC3_mat',QC3_mat)]: #[('F',F),('G',G),('K2i',K2i),('K3',K3),('F3i',F3i),('QC3_mat',QC3_mat)]:
-  print(name, 'size:', len(M))
+  print('{} eigenvalues by irrep ({} total)'.format(name,len(M)))
   for I in GT.irrep_list(nnP):
     M_I = proj.irrep_proj_2plus1(M,E,L,nnP,I, M12=M12, waves=waves, parity=parity)
     if M_I.shape != (0,0):
-      M_I_eigs = sorted(defns.chop(LA.eigvals(M_I).real,tol=1e-12), reverse=True,key=abs)
+      M_I_eigs = sorted(defns.chop(LA.eigvals(M_I).real,tol=1e-9), reverse=True,key=abs)
       print(I, M_I_eigs)
   print()
