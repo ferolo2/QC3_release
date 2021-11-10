@@ -3,7 +3,6 @@
 ################################################################################
 # Standard python modules
 import numpy as np, sys, os
-np.set_printoptions(precision=3) 
 pi = np.pi; sqrt=np.sqrt; LA=np.linalg
 
 # Set up paths for loading QC modules
@@ -50,38 +49,41 @@ f_qcot_2s = [lambda q2: qcot_fits.qcot_fit_s(q2,[a_2s],ERE=True)]
 # Define Kdf3 parameters
 ################################################################################
 K3iso = [200, 400]      # Isotropic term is K3iso[0] + K3iso[1]*\Delta
-K3B_par = 5000          # Parameter for Kdf3^B1 term
-K3E_par = 3000          # Parameter for Kdf3^E1 term
+K3B_par = 5000          # Parameter for K3B term
+K3E_par = 3000          # Parameter for K3E term
 ################################################################################
 # Determine relevant flavor-1 and flavor-2 spectator momenta
 ################################################################################
 nnk_list_1 = defns.list_nnk_nnP(E,L,nnP, Mijk=[M1,M1,M2])
 nnk_list_2 = defns.list_nnk_nnP(E,L,nnP, Mijk=[M2,M1,M1])
-print('flavor 1 spectators:\n',nnk_list_1)
-print('flavor 2 spectators:\n', nnk_list_2)
+nnk_lists_12 = [nnk_list_1, nnk_list_2]
+print('flavor 1 spectators:',nnk_list_1)
+print('flavor 2 spectators:', nnk_list_2)
 ################################################################################
 # Compute desired QC matrices
 ################################################################################
-F3 = F3_mat.F3mat_2plus1(E,L,nnP, f_qcot_1sp,f_qcot_2s,
-                         M12=M12,waves=waves)
-K3 = K3main.K3mat_2plus1(E,L,nnP, K3iso,K3B_par,K3E_par,
-                         M12=M12,waves=waves)
+F3 = F3_mat.F3mat_2plus1(E,L,nnP, f_qcot_1sp,f_qcot_2s, M12=M12,waves=waves,nnk_lists_12=nnk_lists_12)
+F = F_fast.F_full_2plus1_scratch(E,nnP,L, M12=M12, waves=waves, nnk_lists_12=nnk_lists_12, diag_only=False)
+K2i = K2i_mat.K2_inv_mat_2plus1(E,L,nnP,f_qcot_1sp,f_qcot_2s, M12=M12, waves=waves, nnk_lists_12=nnk_lists_12, IPV=0)
+G = G_mov.Gmat_2plus1(E,L,nnP, M12=M12, nnk_lists_12=None, waves=waves)
+J =  defns.chop( 1/3*np.eye(len(F)) - LA.inv(K2i + F + G) @ F )
+#F3 = F @ J
+
+K3 = K3main.K3mat_2plus1(E,L,nnP, K3iso,K3B_par,K3E_par, M12=M12,waves=waves,nnk_lists_12=nnk_lists_12)
 F3i = LA.inv(F3)
+
 QC3_mat = F3i + K3            # QC3 matrix as defined in the paper
-################################################################################
-# Evaluate eigenvalues of the QC
-################################################################################
-EV_QC3 = sorted(defns.chop(LA.eigvals(QC3_mat).real,tol=1e-9), key=abs)
-print('Eigenvalues of the QC:')
-print(np.array(EV_QC3))
+#QC3_mat = LA.inv(J) + K3@F   # This works better than F3^{-1} + Kdf3; removes spurious free solutions
+#QC2_mat = F + K2i            # This works better than F^{-1} + K2; removes spurious free solutions
 ################################################################################
 # Perform desired irrep projections
 ################################################################################
-print('QC3_mat eigenvalues by irrep ({} total)'.format(len(QC3_mat)))
-for I in GT.irrep_list(nnP):
-  M_I = proj.irrep_proj_2plus1(QC3_mat,E,L,nnP,I,
-                               M12=M12, waves=waves, parity=parity)
-  if M_I.shape != (0,0):
-    M_I_eigs = sorted(defns.chop(LA.eigvals(M_I).real,tol=1e-9), key=abs)
-    print('Irrep = ', I)
-    print('Eigenvalues = ', np.array(M_I_eigs))
+#print(M12,)
+for name,M in [('QC3_mat',QC3_mat)]: #[('F',F),('G',G),('K2i',K2i),('K3',K3),('F3i',F3i),('QC3_mat',QC3_mat)]:
+  print('{} eigenvalues by irrep ({} total)'.format(name,len(M)))
+  for I in GT.irrep_list(nnP):
+    M_I = proj.irrep_proj_2plus1(M,E,L,nnP,I, M12=M12, waves=waves, parity=parity)
+    if M_I.shape != (0,0):
+      M_I_eigs = sorted(defns.chop(LA.eigvals(M_I).real,tol=1e-9), reverse=True,key=abs)
+      print(I, M_I_eigs)
+  print()
