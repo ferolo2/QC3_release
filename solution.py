@@ -53,12 +53,16 @@ K3E_par = 300          # Parameter for K3E term
 ################################################################################
 # Define function that returns the smallest eigenvalue of QC in an irrep
 ################################################################################
-def QC3(E, L, nnP, f_qcot_1sp, f_qcot_2s, M12, waves, K3iso, K3B_par, K3E_par, parity, irrep):
-  F3 = F3_mat.F3mat_2plus1(E,L,nnP, f_qcot_1sp,f_qcot_2s, M12=M12,waves=waves)
-  K3 = K3main.K3mat_2plus1(E,L,nnP, K3iso,K3B_par,K3E_par, M12=M12,waves=waves)
+def QC3(E, L, nnP, f_qcot_1sp, f_qcot_2s, M12, waves,
+        K3iso, K3B_par, K3E_par, parity, irrep):
+  F3 = F3_mat.F3mat_2plus1(E,L,nnP, f_qcot_1sp,
+                           f_qcot_2s, M12=M12,waves=waves)
+  K3 = K3main.K3mat_2plus1(E,L,nnP, K3iso,
+                           K3B_par,K3E_par, M12=M12,waves=waves)
   F3i = LA.inv(F3)
   QC3_mat = F3i + K3
-  QC3_mat_I = proj.irrep_proj_2plus1(QC3_mat,E,L,nnP,irrep, M12=M12, waves=waves, parity=parity)
+  QC3_mat_I = proj.irrep_proj_2plus1(QC3_mat,E,L,nnP,irrep,
+                                     M12=M12,waves=waves,parity=parity)
   eigvals = sorted(defns.chop(LA.eigvals(QC3_mat_I).real,tol=1e-9), key=abs)
   return eigvals[0]
 ################################################################################
@@ -80,4 +84,4 @@ for i in range(len(Efree_list)):
   irrep = irrep_list[i]
   Etest = Efree+0.06 #Try an energy slightly above Efree
   Esol = fsolve(func, Etest)
-  print('irrep:',irrep, ' solution: ', Esol)
+  print('irrep:',irrep, ', solution: ', Esol, ', shift: ', Esol-Efree)
