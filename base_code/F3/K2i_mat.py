@@ -41,12 +41,12 @@ def K2i_inv(E,kvec,l,m,Pvec,f_qcot_l, Mijk=[1,1,1], eta_i=1, IPV=0):
 def K2i_inv_k(E,kvec,Pvec,f_qcot_i_waves, Mijk=[1,1,1], waves='sp', eta_i=1, IPV=0):
   f_qcot_i_s = f_qcot_i_waves[0]
   K2i_swave = K2i_inv(E,kvec,0,0,Pvec, f_qcot_i_s, Mijk=Mijk,eta_i=eta_i,IPV=IPV)
+
   if waves=='s':
     return np.array([K2i_swave])
   elif waves=='sp':
     f_qcot_i_p = f_qcot_i_waves[1]
     K2i_pwave = K2i_inv(E,kvec,1,0,Pvec, f_qcot_i_p, Mijk=Mijk,eta_i=eta_i,IPV=IPV)
-    #print(Pvec,kvec,K2i_pwave)
     K2i_k_diag = [K2i_swave] + 3*[K2i_pwave]
     return np.diag(K2i_k_diag)
 

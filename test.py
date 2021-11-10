@@ -28,17 +28,15 @@ parity = -1        # Particle parity (-1 for pseudoscalars)
 L = 5              # Box size (in units of 1/M1)
 nnP = [0,0,0]      # 3-pt. FV spatial momentum (integer-valued)
 E = 3.1            # Total 3-pt. energy in moving frame (in units of M1)
-Ecm = defns.E_to_Ecm(E,L,nnP)   # Total CM 3-pt. energy (in units of M1)
-Pvec = 2*pi/L*np.array(nnP)     # 3-pt. spatial momentum (in units of M1)
 ################################################################################
 # Define K2^{-1} parameters
 ################################################################################
 waves = 'sp'  # Partial waves used for dimers with flavor-1 spectators                                                                                    
               # (flavor-2 spectators only use s-wave)                                                                                                                                     
-a_1s = 0.5    # s-wave scattering length for spectator-flavor-1 channel                                                                                                 
+a_1s = 0.15    # s-wave scattering length for spectator-flavor-1 channel                                                                                                 
 r_1s = 0.0    # s-wave effective range for spectator-flavor-1 channel                                                                                                 
-a_1p = 0.3    # p-wave scattering length for spectator-flavor-1 channel                                                                                                                   
-a_2s = 0.4    # s-wave scattering length for spectator-flavor-2 channel
+a_1p = 0.2    # p-wave scattering length for spectator-flavor-1 channel                                                                                                                   
+a_2s = 0.1    # s-wave scattering length for spectator-flavor-2 channel
 ################################################################################
 # Define K2^{-1} phase shift functions
 ################################################################################
@@ -50,8 +48,8 @@ f_qcot_2s = [lambda q2: qcot_fits.qcot_fit_s(q2,[a_2s],ERE=True)]
 # Define Kdf3 parameters
 ################################################################################
 K3iso = [200, 400]      # Isotropic term is K3iso[0] + K3iso[1]*\Delta
-K3B_par = 5000          # Parameter for Kdf3^B1 term
-K3E_par = 3000          # Parameter for Kdf3^E1 term
+K3B_par = 400          # Parameter for Kdf3^B1 term
+K3E_par = 300          # Parameter for Kdf3^E1 term
 ################################################################################
 # Determine relevant flavor-1 and flavor-2 spectator momenta
 ################################################################################

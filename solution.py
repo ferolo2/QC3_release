@@ -1,8 +1,9 @@
-################################################################################
+######################################A##########################################
 # Import relevant python modules
 ################################################################################
 # Standard python modules
 import numpy as np, sys, os
+np.set_printoptions(precision=6)
 pi = np.pi; sqrt=np.sqrt; LA=np.linalg
 
 # Set up paths for loading QC modules
@@ -16,6 +17,7 @@ sys.path.insert(0,str(cwd/'base_code/Kdf3'))
 import defns, group_theory_defns as GT, projections as proj
 from F3 import G_mov, F_fast, K2i_mat, qcot_fits, F3_mat
 from Kdf3 import K3main
+from scipy.optimize import fsolve
 ################################################################################
 
 ################################################################################
@@ -25,19 +27,16 @@ M1,M2 = [1.,0.5];  # The 3-pt. system masses are [M1,M1,M2]
 M12 = [1.0,M2/M1]  # We always rescale by M1
 parity = -1        # Particle parity (-1 for pseudoscalars)
 L = 5              # Box size (in units of 1/M1)
-nnP = [0,0,0]      # 3-pt. FV spatial momentum (integer-valued)
-E = 3.1            # Total 3-pt. energy in moving frame (in units of M1)
-Ecm = defns.E_to_Ecm(E,L,nnP)   # Total CM 3-pt. energy (in units of M1)
-Pvec = 2*pi/L*np.array(nnP)     # 3-pt. spatial momentum (in units of M1)
+nnP = [0,0,0]      # 3-pt. FV spatial momentum (integer-valued)                                                                                                                                    
 ################################################################################
 # Define K2^{-1} parameters
 ################################################################################
 waves = 'sp'  # Partial waves used for dimers with flavor-1 spectators                                                                                    
               # (flavor-2 spectators only use s-wave)                                                                                                                                     
-a_1s = 0.5    # s-wave scattering length for spectator-flavor-1 channel                                                                                                 
+a_1s = 0.15    # s-wave scattering length for spectator-flavor-1 channel                                                                                                 
 r_1s = 0.0    # s-wave effective range for spectator-flavor-1 channel                                                                                                 
-a_1p = 0.3    # p-wave scattering length for spectator-flavor-1 channel                                                                                                                   
-a_2s = 0.4    # s-wave scattering length for spectator-flavor-2 channel
+a_1p = 0.2    # p-wave scattering length for spectator-flavor-1 channel                                                                                                                   
+a_2s = 0.1    # s-wave scattering length for spectator-flavor-2 channel
 ################################################################################
 # Define K2^{-1} phase shift functions
 ################################################################################
@@ -49,41 +48,36 @@ f_qcot_2s = [lambda q2: qcot_fits.qcot_fit_s(q2,[a_2s],ERE=True)]
 # Define Kdf3 parameters
 ################################################################################
 K3iso = [200, 400]      # Isotropic term is K3iso[0] + K3iso[1]*\Delta
-K3B_par = 5000          # Parameter for K3B term
-K3E_par = 3000          # Parameter for K3E term
+K3B_par = 400          # Parameter for K3B term
+K3E_par = 300          # Parameter for K3E term
 ################################################################################
-# Determine relevant flavor-1 and flavor-2 spectator momenta
+# Define function that returns the smallest eigenvalue of QC in an irrep
 ################################################################################
-nnk_list_1 = defns.list_nnk_nnP(E,L,nnP, Mijk=[M1,M1,M2])
-nnk_list_2 = defns.list_nnk_nnP(E,L,nnP, Mijk=[M2,M1,M1])
-nnk_lists_12 = [nnk_list_1, nnk_list_2]
-print('flavor 1 spectators:',nnk_list_1)
-print('flavor 2 spectators:', nnk_list_2)
+def QC3(E, L, nnP, f_qcot_1sp, f_qcot_2s, M12, waves, K3iso, K3B_par, K3E_par, parity, irrep):
+  F3 = F3_mat.F3mat_2plus1(E,L,nnP, f_qcot_1sp,f_qcot_2s, M12=M12,waves=waves)
+  K3 = K3main.K3mat_2plus1(E,L,nnP, K3iso,K3B_par,K3E_par, M12=M12,waves=waves)
+  F3i = LA.inv(F3)
+  QC3_mat = F3i + K3
+  QC3_mat_I = proj.irrep_proj_2plus1(QC3_mat,E,L,nnP,irrep, M12=M12, waves=waves, parity=parity)
+  eigvals = sorted(defns.chop(LA.eigvals(QC3_mat_I).real,tol=1e-9), key=abs)
+  return eigvals[0]
 ################################################################################
-# Compute desired QC matrices
+# Define energy levels to find
 ################################################################################
-F3 = F3_mat.F3mat_2plus1(E,L,nnP, f_qcot_1sp,f_qcot_2s, M12=M12,waves=waves,nnk_lists_12=nnk_lists_12)
-F = F_fast.F_full_2plus1_scratch(E,nnP,L, M12=M12, waves=waves, nnk_lists_12=nnk_lists_12, diag_only=False)
-K2i = K2i_mat.K2_inv_mat_2plus1(E,L,nnP,f_qcot_1sp,f_qcot_2s, M12=M12, waves=waves, nnk_lists_12=nnk_lists_12, IPV=0)
-G = G_mov.Gmat_2plus1(E,L,nnP, M12=M12, nnk_lists_12=None, waves=waves)
-J =  defns.chop( 1/3*np.eye(len(F)) - LA.inv(K2i + F + G) @ F )
-#F3 = F @ J
-
-K3 = K3main.K3mat_2plus1(E,L,nnP, K3iso,K3B_par,K3E_par, M12=M12,waves=waves,nnk_lists_12=nnk_lists_12)
-F3i = LA.inv(F3)
-
-QC3_mat = F3i + K3            # QC3 matrix as defined in the paper
-#QC3_mat = LA.inv(J) + K3@F   # This works better than F3^{-1} + Kdf3; removes spurious free solutions
-#QC2_mat = F + K2i            # This works better than F^{-1} + K2; removes spurious free solutions
+Efree_list = [2*M1+M2] + [2*sqrt(M1**2+(2*pi/L)**2)+M2]*2 #Non-interacting energies
+irrep_list = ['A1-']*2 + ['E-']
+print('Non-interacting energies:')
+print(np.array(Efree_list))
+print('Irreps:')
+print(irrep_list)
 ################################################################################
-# Perform desired irrep projections
+# Find solutions    
 ################################################################################
-#print(M12,)
-for name,M in [('QC3_mat',QC3_mat)]: #[('F',F),('G',G),('K2i',K2i),('K3',K3),('F3i',F3i),('QC3_mat',QC3_mat)]:
-  print('{} eigenvalues by irrep ({} total)'.format(name,len(M)))
-  for I in GT.irrep_list(nnP):
-    M_I = proj.irrep_proj_2plus1(M,E,L,nnP,I, M12=M12, waves=waves, parity=parity)
-    if M_I.shape != (0,0):
-      M_I_eigs = sorted(defns.chop(LA.eigvals(M_I).real,tol=1e-9), reverse=True,key=abs)
-      print(I, M_I_eigs)
-  print()
+func = lambda E: QC3(E[0], L, nnP, f_qcot_1sp, f_qcot_2s, M12,  #Create wrapper
+                     waves, K3iso, K3B_par, K3E_par, parity, irrep)
+for i in range(len(Efree_list)):
+  Efree = Efree_list[i]
+  irrep = irrep_list[i]
+  Etest = Efree+0.06 #Try an energy slightly above Efree
+  Esol = fsolve(func, Etest)
+  print('irrep:',irrep, ' solution: ', Esol)

@@ -13,6 +13,7 @@ def F3mat_2plus1(E,L,nnP, f_qcot_1sp,f_qcot_2s, M12=[1,1],waves='sp',nnk_lists_1
     nnk_list_2 = defns.list_nnk_nnP(E,L,nnP, Mijk=[M2,M1,M1])
     nnk_lists_12 = [nnk_list_1, nnk_list_2]
 
+    
   F = F_fast.F_full_2plus1_scratch(E,nnP,L, M12=M12, waves=waves, nnk_lists_12=nnk_lists_12, diag_only=False)
   G = G_mov.Gmat_2plus1(E,L,nnP, M12=M12, waves=waves, nnk_lists_12=nnk_lists_12)
   K2i = K2i_mat.K2_inv_mat_2plus1(E,L,nnP,f_qcot_1sp,f_qcot_2s, M12=M12, waves=waves, nnk_lists_12=nnk_lists_12, IPV=0)
