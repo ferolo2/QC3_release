@@ -22,7 +22,7 @@ from F3 import F_mat, K2i_mat, qcot_fits
 ################################################################################
 # Define 2-pt. system parameters --- *MUST ALWAYS RESCALE SO THAT M1=1*
 ################################################################################
-sym = 'ID'
+sym = 'ND'
 M1,M2 = [100.,50.]  # The 2-pt. system masses are [M1,M2], e.g. in MeV
 M1,M2 = [1.,M2/M1]  # We always rescale by M1 to make everything dimensionless
 M12 = [M1,M2]
