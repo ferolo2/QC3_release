@@ -22,19 +22,18 @@ from F3 import F_mat, K2i_mat, qcot_fits
 ################################################################################
 # Define 2-pt. system parameters --- *MUST ALWAYS RESCALE SO THAT M1=1*
 ################################################################################
-sym = 'ND'
+sym = 'ID'
 M1,M2 = [100.,50.]  # The 2-pt. system masses are [M1,M2], e.g. in MeV
 M1,M2 = [1.,M2/M1]  # We always rescale by M1 to make everything dimensionless
 M12 = [M1,M2]
-#spec = 1           # spectator flavor: 1 for 12<->12 (ND) scattering, 2 for 11<->11 (ID) scattering
 L = 5               # Box size (in units of 1/M1)
 nnP = [0,0,0]       # 2-pt. FV spatial momentum (integer-valued)
-if sym=='ID' and M12!=[1.,1.]:
-  sys.error('Error: M12={} inconsistent with sym={}',M12,sym)
+if sym=='ID' and M12!=[1.,1.]:  # Consistencty check
+  raise ValueError('Error: M12={} inconsistent with sym={}',M12,sym)
 ################################################################################
 # Define K2^{-1} parameters
 ################################################################################
-waves = 'sp'  # Partial waves used (only use s-wave for sym='ID')
+waves = 's'  # Partial waves used (only use s-wave for sym='ID')
 a_s = 0.5    # s-wave scattering length
 r_s = 0.2    # s-wave effective range
 a_p = 0.3    # p-wave scattering length (only used if waves='sp' & sym='ND')
@@ -47,6 +46,14 @@ if waves=='s':
   f_qcot_waves = [f_qcot_s]
 elif waves=='sp' and sym=='ND':
   f_qcot_waves = [f_qcot_s, f_qcot_p]
+else:
+  sys.error('Error: waves={} invalid for sym={}',waves,sym)
+  raise ValueError
+################################################################################
+# Perform consistency check
+################################################################################
+
+
 ################################################################################
 # Define function that returns the smallest eigenvalue of QC in an irrep
 ################################################################################
@@ -88,15 +95,11 @@ func = lambda Ecm_arr: QC2(Ecm_arr[0], L, nnP, f_qcot_waves, M12, waves, irrep)
 for n in range(len(Ecm_free_decomp_list)):
   Ecm_free, degen, decomp = Ecm_free_decomp_list[n]
   for (irrep, N_copies) in decomp:
-    if irrep == 'A1g' or (irrep=='T1u' and 'p' in waves):
+    d_I = np.trace(proj.P_irrep_2pt(nnP,irrep,waves=waves))
+    if d_I == 0.: # Check if irrep is missing
+      print('Warning: waves={} cannot affect irrep {} levels; do not include in fit'.format(waves,irrep))
+      Ecm_sol = Ecm_free
+    else:
       Ecm_test = Ecm_free + 0.06          # Try an energy slightly above Ecm_free
       Ecm_sol = fsolve(func, Ecm_test)[0] # Will only find one solution; more work needed if N_copies>1
-    elif waves=='s':
-      print('Warning: s-wave only affects A1g irrep;',
-            'other irreps should not be considered in fit')
-      Ecm_sol = Ecm_free
-    elif waves=='sp':
-      print("Warning: waves='sp' only affect A1g & T1u irreps;",
-            'other irreps should not be considered in fit')
-      Ecm_sol = Ecm_free
     print('irrep: {}, Ecm_sol: {:.6f}, shift: {:.6f}'.format(irrep, Ecm_sol, Ecm_sol-Ecm_free))

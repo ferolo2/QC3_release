@@ -107,9 +107,8 @@ def int_nnk(L,gam,x2,waves='sp'):
   for i in range(W):
     l, _ = defns.lm_idx(i,waves=waves)
     if abs(out_dict[l].imag)>1e-13:
-      sys.error('Error in F_fast: imaginary part encountered')
       print(out_dict[l])
-      raise ValueError
+      raise ValueError('Error in F_fast: imaginary part encountered')
     out[i,i] = out_dict[l].real
   return out
 
