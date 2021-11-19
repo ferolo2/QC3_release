@@ -47,24 +47,6 @@ def R_prod(*argv):
     p = [np.sign(i)*p[abs(i)-1] for i in p2]
   return p
 
-############################################################
-# Permutation matrices S(R)
-############################################################
-def Smat(R,shell):
-  R = list(R); shell = list(shell)
-  nnk_list = defns.shell_nnk_list(shell)
-  nnk_list = [list(nnk) for nnk in nnk_list]
-  Nk = len(nnk_list)
-
-  S = np.zeros((Nk,Nk))
-  for i in range(Nk):
-    k = nnk_list[i]
-    kR = [ np.sign(R[j]) * k[abs(R[j])-1] for j in range(3) ]
-    j = nnk_list.index(kR)
-
-    S[i][j] = 1
-  return S
-
 
 ###################################################################################
 # p-wave Wigner D-matrices D(R) in real Ylm basis (ouputs 3x3 p-wave matrix)
@@ -172,7 +154,7 @@ def Dmat22(R):
     return defns.chop( Dmat22([3,2,1]) @ Dmat22([R[2],R[1],R[0]]) )
 
   else:
-    print('Error in Dmat: This should never trigger')
+    print('Error in Dmat22: This should never trigger')
 ###################################################################################
 # Wigner D-matrices D(R) in real Ylm basis (ouputs 4x4 s-wave \oplus p-wave matrix)
 ###################################################################################
@@ -183,8 +165,16 @@ def Dmat(R):
   return Dmat
 
 ############################################################
-# Cubic group, little groups
+# Cubic groups, little groups
 ############################################################
+# Create list of 24 pure rotations (i.e. point group O w/o inversions)
+def rotations_list():
+  out = [[1,2,3],[2,3,1],[3,1,2],[1,3,-2],[2,-1,3],[3,2,-1],
+          [1,-2,-3],[2,-3,-1],[3,-1,-2],[1,-3,2],[2,1,-3],[3,-2,1],
+          [-1,2,-3],[-2,3,-1],[-3,1,-2],[-1,3,2],[-2,-1,-3],[-3,2,1],
+          [-1,-2,3],[-2,-3,1],[-3,-1,2],[-1,-3,-2],[-2,1,3],[-3,-2,-1]]
+  return out
+
 # Create list of all 48 permutations w/ any # of negations (i.e., full cubic group w/ inversions Oh)
 def Oh_list():
   Oh_list = list(perms([1,2,3]))
@@ -199,51 +189,35 @@ def Oh_list():
   Oh_list = [ list(R) for R in Oh_list ]
   return Oh_list
 
-# Little group for given k
+# Little group for given shell type
 def little_group(shell):
   shell = list(shell)
   # 000
   if shell==[0,0,0]:
     return Oh_list()
-
   # 00a
   elif shell[0]==shell[1]==0:
     return [[1,2,3],[-1,2,3],[1,-2,3],[-1,-2,3],[2,1,3],[-2,1,3],[2,-1,3],[-2,-1,3]]
-
-  # a00 (temporary)
-  # elif shell[1]==shell[2]==0:
-  #   return [[1,2,3],[1,-2,3],[1,2,-3],[1,-2,-3],[1,3,2],[1,-3,2],[1,3,-2],[1,-3,-2]]
-
   # aa0
   elif shell[0]==shell[1]!=shell[2]==0:
     return [[1,2,3],[1,2,-3],[2,1,3],[2,1,-3]]
-
   # aaa
   elif shell[0]==shell[1]==shell[2]:
     return [[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]
-
   # ab0
   elif 0!=shell[0]!=shell[1]!=0==shell[2]:
     return [[1,2,3],[1,2,-3]]
-
   # aab
   elif shell[0]==shell[1]!=shell[2]:
     return [[1,2,3],[2,1,3]]
-
   # abc
   elif 0!=shell[0]!=shell[1]!=shell[2]!=shell[0]!=0 and shell[1]!=0:
     return [[1,2,3]]
-
   else:
     print('Error: invalid shell input')
+    sys.exit()
 
-# Create list of 24 pure rotations (i.e. point group O w/o inversions)
-def rotations_list():
-  out = [[1,2,3],[2,3,1],[3,1,2],[1,3,-2],[2,-1,3],[3,2,-1],
-          [1,-2,-3],[2,-3,-1],[3,-1,-2],[1,-3,2],[2,1,-3],[3,-2,1],
-          [-1,2,-3],[-2,3,-1],[-3,1,-2],[-1,3,2],[-2,-1,-3],[-3,2,1],
-          [-1,-2,3],[-2,-3,1],[-3,-1,2],[-1,-3,-2],[-2,1,3],[-3,-2,-1]]
-  return out
+
 ###########################################################
 # Irreps, conjugacy classes, characters
 ###########################################################
@@ -253,7 +227,7 @@ def irrep_list(Pvec):
 
   # 000 (Oh)
   if Pvec==[0,0,0]:
-    return ['A1+','A2+','E+','T1+','T2+','A1-','A2-','E-','T1-','T2-']
+    return ['A1g','A2g','Eg','T1g','T2g','A1u','A2u','Eu','T1u','T2u']
 
   # 00a (C4v)
   elif Pvec[0]==Pvec[1]==0:
@@ -280,22 +254,22 @@ def irrep_list(Pvec):
 
 # Dimension of irrep
 def irrep_dim(I):
-  if I in ['A1+','A1','A2+','A2','A1-','A2-','B1','B2']:
+  if I in ['A1g','A1','A2g','A2','A1u','A2u','B1','B2']:
     return 1
-  elif I in ['E+','E','E-','E2']:
+  elif I in ['Eg','E','Eu','E2']:
     return 2
-  elif I in ['T1+','T1','T2+','T2','T1-','T2-']:
+  elif I in ['T1g','T1','T2g','T2','T1u','T2u']:
     return 3
   else:
-    print('Error: invalid irrep in irrep_dim')
+    print('Error: invalid irrep in irrep_dim -- "{}"'.format(I))
 
 # Format irrep strings to be Latex-friendly (not including $ signs)
 def irrep_tex(irrep):
   if len(irrep) > 1:
-    if irrep[-1] == '+':
-      irrep = irrep[:-1]+'g'
-    elif irrep[-1] == '-':
-      irrep = irrep[:-1]+'u'
+    # if irrep[-1] == '+':
+    #   irrep = irrep[:-1]+'g'
+    # elif irrep[-1] == '-':
+    #   irrep = irrep[:-1]+'u'
     irrep = irrep[0]+'_{'+irrep[1:]+'}'
   return irrep
 
@@ -347,16 +321,16 @@ def chi(p,I,Pvec):
 
   # 000 (Oh)
   if Pvec==[0,0,0]:
-    if I in ['A1+','A1']:
+    if I in ['A1g','A1']:
       return 1
 
-    elif I in ['A2+','A2']:
+    elif I in ['A2g','A2']:
       if cc in ['C2','C4','sigma_d','S4']:
         return -1
       else:
         return 1
 
-    elif I in ['E+','E']:
+    elif I in ['Eg','E']:
       if cc in ['E','C4^2','i','sigma_h']:
         return 2
       elif cc in ['C3','S6']:
@@ -364,7 +338,7 @@ def chi(p,I,Pvec):
       else:
         return 0
 
-    elif I in ['T1+','T1']:
+    elif I in ['T1g','T1']:
       if cc in ['E','i']:
         return 3
       elif cc in ['C3','S6']:
@@ -374,7 +348,7 @@ def chi(p,I,Pvec):
       else:
         return -1
 
-    elif I in ['T2+','T2']:
+    elif I in ['T2g','T2']:
       if cc in ['E','i']:
         return 3
       elif cc in ['C3','S6']:
@@ -384,19 +358,19 @@ def chi(p,I,Pvec):
       else:
         return -1
 
-    elif I=='A1-':
+    elif I=='A1u':
       if cc in ['E','C3','C4^2','C4','C2']:
         return 1
       else:
         return -1
 
-    elif I=='A2-':
+    elif I=='A2u':
       if cc in ['E','C3','C4^2','S4','sigma_d']:
         return 1
       else:
         return -1
 
-    elif I=='E-':
+    elif I=='Eu':
       if cc in ['E','C4^2']:
         return 2
       elif cc in ['i','sigma_h']:
@@ -408,7 +382,7 @@ def chi(p,I,Pvec):
       else:
         return 0
 
-    elif I=='T1-':
+    elif I=='T1u':
       if cc=='E':
         return 3
       elif cc=='i':
@@ -420,7 +394,7 @@ def chi(p,I,Pvec):
       else:
         return 0
 
-    elif I=='T2-':
+    elif I=='T2u':
       if cc=='E':
         return 3
       elif cc=='i':
@@ -552,10 +526,10 @@ def parity_irrep(Pvec,I):
 
   # 000 (Oh)
   if Pvec==[0,0,0]:
-    if I[-1]=='+':
-      return I[:-1]+'-'
-    elif I[-1]=='-':
-      return I[:-1]+'+'
+    if I[-1]=='g':
+      return I[:-1]+'u'
+    elif I[-1]=='u':
+      return I[:-1]+'g'
     else:
       return I
 
@@ -591,13 +565,6 @@ def parity_irrep(Pvec,I):
     elif I[:2]=='A2':
       return 'A1'+I[2:]
 
-  # # aab (C2)
-  # elif Pvec[0]==Pvec[1]!=Pvec[2]:
-  #   if I[0]=='A':
-  #     return 'B'+I[1:]
-  #   elif I[0]=='B':
-  #     return 'A'+I[1:]
-
   # abc (C1 = trivial)
   # elif 0!=Pvec[0]!=Pvec[1]!=Pvec[2]!=Pvec[0]!=0 and Pvec[1]!=0:
   #   return []
@@ -605,178 +572,38 @@ def parity_irrep(Pvec,I):
   else:
     print('Error: invalid Pvec input')
 
-
-########
-# Find all free energies with Ecm below Ecm_max for given L
-# Output is dictionary of form dict[(level,shell)] = [Ecm,degen,configs]
-def free_levels_dict(L,nnP,Ecm_max=5):
-  Emax = sqrt(Ecm_max**2 + (2*pi/L)**2*sum([x**2 for x in nnP]))
-  nmax = int(L/(2*pi) * sqrt((Emax-1)*(Emax-3))) # from assuming assuming 2 pts. at rest
-
-  nvec_list = []
-  for n1 in range(-nmax,nmax+1):
-    for n2 in range(-nmax,nmax+1):
-      for n3 in range(-nmax,nmax+1):
-        if n1**2+n2**2+n3**2 <= (L/(2*pi)*(Emax-2))**2:
-          nvec_list.append([n1,n2,n3])
-
-  level_dict = {}
-  for i1 in range(len(nvec_list)):
-    for i2 in range(i1,len(nvec_list)):
-      nvec1 = nvec_list[i1]
-      nvec2 = nvec_list[i2]
-      nvec12 = [nnP[i]-nvec1[i]-nvec2[i] for i in range(3)]
-
-      m1_2 = sum([x**2 for x in nvec1])
-      m2_2 = sum([x**2 for x in nvec2])
-      m12_2 = sum([x**2 for x in nvec12])
-
-      E1 = sqrt((2*pi/L)**2*m1_2+1)
-      E2 = sqrt((2*pi/L)**2*m2_2+1)
-      E12 = sqrt((2*pi/L)**2*m12_2+1)
-
-      E = E1+E2+E12
-      Ecm = sqrt(E**2-(2*pi/L)**2*sum([x**2 for x in nnP]))
-
-      if Ecm <= Ecm_max:
-        level = tuple(sorted([m1_2,m2_2,m12_2]))
-        config = sorted([nvec1,nvec2,nvec12])
-        shell = config_shell(config)
-        key = (level,shell)
-        if key in level_dict:
-          if config not in level_dict[key][2]:
-            level_dict[key][1] += 1
-            level_dict[key][2].append(config)
-        else:
-          level_dict[key] = [Ecm, 1, [config]]
-
-  tmp = sorted(level_dict.items(), key=lambda x: x[1][0]) # sort by Ecm
-  out={}
-  for i in tmp:
-    out[i[0]]=i[1]
-  return out
-
-########
-
-########
-# Find all free energies with Ecm below Ecm_max for given L
-# Output is dictionary of form dict[(level,shell)] = [Ecm,degen,configs]
-def ND2_free_levels_dict(m_list,L,nnP,Ecm_max=4):
-  [m1,m2] = sorted(m_list)
-  Emax = sqrt(Ecm_max**2 + (2*pi/L)**2*sum([x**2 for x in nnP]))
-  nmax = int(L/(2*pi) * sqrt(Emax*(Emax-2*m1))) # from assuming assuming 1 pt. at rest
-
-  nvec_list = []
-  for n1 in range(-nmax,nmax+1):
-    for n2 in range(-nmax,nmax+1):
-      for n3 in range(-nmax,nmax+1):
-        if n1**2+n2**2+n3**2 <= (L/(2*pi))**2*Emax*(Emax-2*m1):
-          nvec_list.append([n1,n2,n3])
-
-  level_dict = {}
-  for i1 in range(len(nvec_list)):
-    for i2 in range(len(nvec_list)):
-      nvec1 = nvec_list[i1]
-      nvec2 = [nnP[i]-nvec1[i] for i in range(3)]
-
-      n1sq = sum([x**2 for x in nvec1])
-      n2sq = sum([x**2 for x in nvec2])
-
-      E1 = sqrt((2*pi/L)**2*n1sq + m1**2)
-      E2 = sqrt((2*pi/L)**2*n2sq + m2**2)
-
-      E = E1+E2
-      Ecm = sqrt(E**2-(2*pi/L)**2*sum([x**2 for x in nnP]))
-
-      if Ecm <= Ecm_max:
-        level = (n1sq,n2sq)
-        config = (nvec1,nvec2)
-        shell = config_shell(config,ND=True)
-        key = (level,shell)
-        if key in level_dict:
-          if config not in level_dict[key][2]:
-            level_dict[key][1] += 1
-            level_dict[key][2].append(config)
-        else:
-          level_dict[key] = [Ecm, 1, [config]]
-
-  tmp = sorted(level_dict.items(), key=lambda x: x[1][0]) # sort by Ecm
-  out={}
-  for i in tmp:
-    out[i[0]]=i[1]
-  return out
-
-########
-
-########
-# Find all free energies with Ecm below Ecm_max for given L
-# Output is dictionary of form dict[(level,shell)] = [Ecm,degen,configs]
-def ND3_free_levels_dict(m_list,L,nnP,Ecm_max=5):
-  [m1,m2,m3] = sorted(m_list)
-  Emax = sqrt(Ecm_max**2 + (2*pi/L)**2*sum([x**2 for x in nnP]))
-  nmax = int(L/(2*pi) * sqrt((Emax-m1)*(Emax-3*m1))) # from assuming assuming 2 pts. at rest
-
-  nvec_list = []
-  for n1 in range(-nmax,nmax+1):
-    for n2 in range(-nmax,nmax+1):
-      for n3 in range(-nmax,nmax+1):
-        if n1**2+n2**2+n3**2 <= (L/(2*pi))**2*(Emax-m1)*(Emax-3*m1):
-          nvec_list.append([n1,n2,n3])
-
-  level_dict = {}
-  for i1 in range(len(nvec_list)):
-    for i2 in range(len(nvec_list)):
-      nvec1 = nvec_list[i1]
-      nvec2 = nvec_list[i2]
-      nvec12 = [nnP[i]-nvec1[i]-nvec2[i] for i in range(3)]
-
-      n1_2 = sum([x**2 for x in nvec1])
-      n2_2 = sum([x**2 for x in nvec2])
-      n12_2 = sum([x**2 for x in nvec12])
-
-      E1 = sqrt((2*pi/L)**2*n1_2 + m1**2)
-      E2 = sqrt((2*pi/L)**2*n2_2 + m2**2)
-      E12 = sqrt((2*pi/L)**2*n12_2 + m3**2)
-
-      E = E1+E2+E12
-      Ecm = sqrt(E**2-(2*pi/L)**2*sum([x**2 for x in nnP]))
-
-      if Ecm <= Ecm_max:
-        level = (n1_2,n2_2,n12_2)
-        config = (nvec1,nvec2,nvec12)
-        shell = config_shell(config,ND=True)
-        key = (level,shell)
-        if key in level_dict:
-          if config not in level_dict[key][2]:
-            level_dict[key][1] += 1
-            level_dict[key][2].append(config)
-        else:
-          level_dict[key] = [Ecm, 1, [config]]
-
-  tmp = sorted(level_dict.items(), key=lambda x: x[1][0]) # sort by Ecm
-  out={}
-  for i in tmp:
-    out[i[0]]=i[1]
-  return out
+################################################################################
+# Functions for finding free energies & decomposing into irreps
+################################################################################
+# Sort list according to system's symmetry
+def sym_sort(my_list,sym, key=None):
+  # if type(my_list[0]) == list:
+  #   my_key = lambda vec: sum([x**2 for x in vec])
+  # else:
+  #   my_key = None
+  if sym=='ID':
+    my_list.sort()
+  elif sym=='2+1':
+    my_list[:2] = sorted(my_list[:2])
+  return tuple(my_list)
 
 
-########
-########
 # Find all 2pt. free energies with Ecm below Ecm_max for given L
 # Output is dictionary of form dict[(level,shell)] = [Ecm,degen,configs]
-def free_levels_dict_2pt(m_list,L,nnP,Ecm_max=4,sym='ID'):
-  [m1,m2] = sorted(m_list)
-  if not((sym=='ID' and m1==m2) or sym=='ND'):
-    raise ValueError('Error: masses {} inconsistent with {} symmetry'.format(m_list,sym))
+def free_levels_dict_2pt(M12,L,nnP,Ecm_max=4,sym='ID'):
+  [M1,M2] = M12
+  M0 = min(M12)
+  if not((sym=='ID' and M1==M2) or sym=='ND'):
+    raise ValueError('Error: masses {} inconsistent with {} symmetry'.format(M12,sym))
 
   Emax = sqrt(Ecm_max**2 + (2*pi/L)**2*sum([x**2 for x in nnP]))
-  nmax = int(L/(2*pi) * sqrt(Emax*(Emax-2*m1))) # from assuming assuming 2 pts. at rest
+  nmax = int(L/(2*pi) * sqrt(Emax*(Emax-2*M0))) # from assuming assuming 1 pt. at rest
 
   nvec_list = []
   for n1 in range(-nmax,nmax+1):
     for n2 in range(-nmax,nmax+1):
       for n3 in range(-nmax,nmax+1):
-        if n1**2+n2**2+n3**2 <= (L/(2*pi))**2*Emax*(Emax-2*m1):
+        if n1**2+n2**2+n3**2 <= (L/(2*pi))**2*Emax*(Emax-2*M0):
           nvec_list.append([n1,n2,n3])
 
   level_dict = {}
@@ -790,8 +617,8 @@ def free_levels_dict_2pt(m_list,L,nnP,Ecm_max=4,sym='ID'):
       n1_2 = sum([x**2 for x in config[0]])
       n2_2 = sum([x**2 for x in config[1]])
 
-      E1 = sqrt((2*pi/L)**2*n1_2 + m1**2)
-      E2 = sqrt((2*pi/L)**2*n2_2 + m2**2)
+      E1 = sqrt((2*pi/L)**2*n1_2 + M1**2)
+      E2 = sqrt((2*pi/L)**2*n2_2 + M2**2)
 
       E = E1+E2
       Ecm = sqrt(E**2-(2*pi/L)**2*sum([x**2 for x in nnP]))
@@ -814,23 +641,22 @@ def free_levels_dict_2pt(m_list,L,nnP,Ecm_max=4,sym='ID'):
   return out
 
 
-########
-# Find all free energies with Ecm below Ecm_max for given L
+# Find all 3-pt. free energies with Ecm below Ecm_max for given L
 # Output is dictionary of form dict[(level,shell)] = [Ecm,degen,configs]
-def free_levels_dict_3pt(m_list,L,nnP,Ecm_max=5,sym='ID'):
-  [m1,m2,m3] = m_list #sorted(m_list)
-  m0 = min(m_list)
-  if not((sym=='ID' and m1==m2==m3) or (sym=='2+1' and m1==m2!=m3) or sym=='ND'):
-    raise ValueError('Error: masses {} inconsistent with {} symmetry'.format(m_list,sym))
+def free_levels_dict_3pt(M123,L,nnP,Ecm_max=5,sym='ID'):
+  [M1,M2,M3] = M123 #sorted(M123)
+  M0 = min(M123)
+  if not((sym=='ID' and M1==M2==M3) or (sym=='2+1' and M1==M2!=M3) or sym=='ND'):
+    raise ValueError('Error: masses {} inconsistent with {} symmetry'.format(M123,sym))
 
   Emax = sqrt(Ecm_max**2 + (2*pi/L)**2*sum([x**2 for x in nnP]))
-  nmax = int(L/(2*pi) * sqrt((Emax-m0)*(Emax-3*m0))) # from assuming assuming 2 pts. at rest
+  nmax = int(L/(2*pi) * sqrt((Emax-M0)*(Emax-3*M0))) # from assuming assuming 2 pts. at rest
 
   nvec_list = []
   for n1 in range(-nmax,nmax+1):
     for n2 in range(-nmax,nmax+1):
       for n3 in range(-nmax,nmax+1):
-        if n1**2+n2**2+n3**2 <= (L/(2*pi))**2*(Emax-m0)*(Emax-3*m0):
+        if n1**2+n2**2+n3**2 <= (L/(2*pi))**2*(Emax-M0)*(Emax-3*M0):
           nvec_list.append([n1,n2,n3])
 
   level_dict = {}
@@ -849,9 +675,9 @@ def free_levels_dict_3pt(m_list,L,nnP,Ecm_max=5,sym='ID'):
       n2_2 = sum([x**2 for x in config[1]])
       n12_2 = sum([x**2 for x in config[2]])
 
-      E1 = sqrt((2*pi/L)**2*n1_2 + m1**2)
-      E2 = sqrt((2*pi/L)**2*n2_2 + m2**2)
-      E12 = sqrt((2*pi/L)**2*n12_2 + m3**2)
+      E1 = sqrt((2*pi/L)**2*n1_2 + M1**2)
+      E2 = sqrt((2*pi/L)**2*n2_2 + M2**2)
+      E12 = sqrt((2*pi/L)**2*n12_2 + M3**2)
 
       E = E1+E2+E12
       Ecm = sqrt(E**2-(2*pi/L)**2*sum([x**2 for x in nnP]))
@@ -877,48 +703,7 @@ def free_levels_dict_3pt(m_list,L,nnP,Ecm_max=5,sym='ID'):
     out[i[0]]=i[1]
   return out
 
-######
-# Sort list according to system's symmetry
-def sym_sort(my_list,sym, key=None):
-  # if type(my_list[0]) == list:
-  #   my_key = lambda vec: sum([x**2 for x in vec])
-  # else:
-  #   my_key = None
-  if sym=='ID':
-    my_list.sort(key=key)
-  elif sym=='2+1':
-    my_list[:2] = sorted(my_list[:2],key=key)
-  # elif sym=='1+2':
-  #   my_list[1:] = sorted(my_list[1:],key=key)
-  return tuple(my_list)
 
-########
-# Returns shell/orbit that a certain config is in
-# def config_shell(config, sym='ID'):
-#   level = []
-#   shell = []
-#   for nvec in config:
-#     level.append(sum([x**2 for x in nvec]))
-#     shell.append(sorted([abs(x) for x in nvec]))
-#   if sym=='ID':
-#     level.sort()
-#     shell.sort()
-#     config.sort()
-#   elif sym=='2+1':
-#     level[:2] = sorted(level[:2])
-#     shell[:2] = sorted(shell[:2])
-#     config[:2] = sorted(config[:2])
-#   elif sym=='1+2':
-#     level[1:] = sorted(level[1:])
-#     shell[1:] = sorted(shell[1:])
-#     config[1:] = sorted(config[1:])
-#   elif sym=='ND':
-#     pass
-#   return tuple(level), tuple(tuple(x) for x in shell), tuple(config)
-
-
-
-####
 '''Computes character table of the (generally reducible) representation of a
 particular free energy level (& shell if there's an accidental degeneracy).
 Outputs a dictionary of the form dict[cc] = (n,x,p), where n is the size of the
@@ -934,13 +719,10 @@ def level_characters(nnP, config_list, sym='ID', parity=-1):
       cc_table[cc] = [1,0,p]
       for config in config_list:
         new_config = sym_sort([cubic_transf(vec,p) for vec in config], sym)
-        #new_config = sym_sort(new_config0, sym)
-        # if nnP==[0,0,0] and [sum([x**2 for x in v]) for v in config]==[1,1,0]:
-        #   print(cc, config,new_config0,new_config, config==tuple(new_config0)==new_config)
         if new_config == config:
           cc_table[cc][1] += 1
       if cc[0] in 'siS':
-        cc_table[cc][1] = parity**N_pt * cc_table[cc][1]  # TB: assumes odd intrinsic parity by default
+        cc_table[cc][1] = parity**N_pt * cc_table[cc][1]  # Note: assumes odd intrinsic parity by default
     else:
       cc_table[cc][0] += 1
   return cc_table
@@ -950,6 +732,7 @@ def level_characters(nnP, config_list, sym='ID', parity=-1):
 def irrep_decomp(nnP,cc_table, tex=False):
   N = len(little_group(nnP))
   out = ''
+  irreps = []
   for I in irrep_list(nnP):
     prod = 0
     for cc in cc_table:
@@ -964,78 +747,36 @@ def irrep_decomp(nnP,cc_table, tex=False):
         else:
           out += '{}{} \\oplus '.format(int(weight),irrep_tex(I))
       else:
-        out += '{}{} + '.format(int(weight),I)
+        #out += '{}*{} + '.format(int(weight),I)
+        irreps.append((I,int(weight)))
   if tex == True:
     return '${}$'.format(out[:-8])
   else:
-    return out[:-3]
-
-########
-# # Find all energies where q*=0 with Ecm below Ecm_max for given L
-# # Output is dictionary of form dict[(level,shell)] = [Ecm,degen,configs]
-# def false_levels(L,nnP,Ecm_max=5):
-#   Emax = sqrt(Ecm_max**2 + (2*pi/L)**2*sum([x**2 for x in nnP]))
-#   nmax = int(L/(2*pi) * sqrt((Emax-1)*(Emax-3)))
-#
-#   nvec_list = []
-#   for n1 in range(-nmax,nmax+1):
-#     for n2 in range(-nmax,nmax+1):
-#       for n3 in range(-nmax,nmax+1):
-#         if n1**2+n2**2+n3**2 <= (L/(2*pi)*(Emax-2))**2:
-#           nvec_list.append([n1,n2,n3])
-#
-#   out = []
-#   for i1 in range(len(nvec_list)):
-#     for i2 in range(i1,len(nvec_list)):
-#       nnk = nvec_list[i1]
-#       nnP2k = [nnP[i]-nnk[i] for i in range(3)]
-#
-#       om_k = sqrt((2*pi/L)**2*sum([x**2 for x in nnk]) + 1)
-#       P2k_term = sqrt((2*pi/L)**2*sum([x**2 for x in nnP2k]) + 4)
-#
-#       E = om_k + P2k_term
-#       Ecm = sqrt(E**2-(2*pi/L)**2*sum([x**2 for x in nnP]))
-#
-#       if Ecm <= Ecm_max and (out == [] or min([abs(out[i][0]-Ecm) for i in range(len(out))]) > 1e-10):
-#         out.append((Ecm,nnk))
-#   return sorted(out)
-
-###########################################################
-# Irrep projection subspaces/eigenvalue decomposition
-###########################################################
-# NOTE: These don't work for nonzero Pvec yet
-
-# Dimension of irrep projection subspace for given shell & Pvec
-# def subspace_dim_o(shell,I,Pvec):
-#   s = 0
-#   for R in little_group(shell):
-#     s += chi(R,I,Pvec)*np.trace(Dmat(R))
-#   return int(s/len(little_group(shell)) * irrep_dim(I))
-#
-# # Dimension of irrep projection subspace for given shell & l & Pvec
-# def subspace_dim_o_l(shell,I,l,Pvec):
-#   if l==0:
-#     s = 0
-#     for R in little_group(shell):
-#       print(shell,R,I,Pvec)
-#       s += chi(R,I,Pvec)
-#     return int(s/len(little_group(shell)) * irrep_dim(I))
-#   elif l==2:
-#     return subspace_dim_o(shell,I,Pvec) - subspace_dim_o_l(shell,I,0,Pvec)
+    return irreps #out[:-3]
 
 
+# Compute all free 3-pt. CM energy levels below Ecm_max, including degeneracies & irrep decomps
+def free_levels_decomp_3pt(M123,L,nnP,Ecm_max=5,sym='ID',parity=-1):
+  level_dict = free_levels_dict_3pt(M123,L,nnP,Ecm_max=Ecm_max,sym=sym)
+  Ecm_decomp_list = []
+  for key in level_dict:
+    (level, shell) = key
+    (Ecm, degen, configs) = level_dict[key]
+    # print(level,Ecm,degen)
+    cc_table = level_characters(nnP,configs, sym=sym,parity=parity)
+    decomp = irrep_decomp(nnP,cc_table, tex=False)
+    Ecm_decomp_list.append((Ecm,degen,decomp))
+  return Ecm_decomp_list
 
-###########################################################
-# Graveyard (old code)
-###########################################################
-# # Compute R(n,theta) for any axis n and angle theta
-# def Rmat(n,t):
-#   N = LA.norm(n)
-#   n = [i/N for i in n]
-#   n_sin = np.array([
-#     [0,-n[2],n[1]],
-#     [n[2],0,-n[0]],
-#     [-n[1],n[0],0]
-#     ])
-#
-#   return defns.chop(np.cos(t)*np.identity(3) + np.sin(t)*n_sin + (1-np.cos(t))*np.outer(n,n))
+# Compute all free 2-pt. CM energy levels below Ecm_max, including degeneracies & irrep decomps
+def free_levels_decomp_2pt(M12,L,nnP,Ecm_max=4,sym='ID',parity=-1):
+  level_dict = free_levels_dict_2pt(M12,L,nnP,Ecm_max=Ecm_max,sym=sym)
+  Ecm_decomp_list = []
+  for key in level_dict:
+    (level, shell) = key
+    (Ecm, degen, configs) = level_dict[key]
+    # print(level,Ecm,degen)
+    cc_table = level_characters(nnP,configs, sym=sym,parity=parity)
+    decomp = irrep_decomp(nnP,cc_table, tex=False)
+    Ecm_decomp_list.append((Ecm,degen,decomp))
+  return Ecm_decomp_list

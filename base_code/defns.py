@@ -1,7 +1,6 @@
 import numpy as np
 pi=np.pi; LA=np.linalg
 from itertools import permutations as perms
-from scipy.interpolate import interp1d
 from constants import *
 
 # from numba import jit,njit
@@ -104,6 +103,7 @@ def E_to_Ecm(E,L,nnP,rev=False):
 ##########################################################
 # Return [Mi, Mj, Mk] given [M1,M2,M3] and spectator flavor index i
 # Can also specify j, otherwise assumes (i,j,k) is in cyclic order
+# Note: here i=0,1,2 for flavors 1,2,3; different in other parts of code
 def get_Mijk(M123,i,j=None):
   if j==i:
     print("Error in get_Mijk: i and j must be different")
@@ -121,18 +121,18 @@ def get_Mijk(M123,i,j=None):
 
 # Return number of distinct lm elements given partial waves used
 def get_lm_size(waves):
-  if waves=='spd':
-    return 9
+  if waves=='s':
+    return 1
   elif waves=='sp':
     return 4
-  elif waves=='s':
-    return 1
   elif waves=='sd':
     return 6
+  elif waves=='spd':
+    return 9
 
 # Convert block-matrix index to (l,m)
 # @jit(nopython=True,fastmath=True,parallel=True) #FRL, it speeds up a bit. I changed the error condition to make it compatible with numba.
-def lm_idx(i,waves='spd'):
+def lm_idx(i,waves='sp'):
   W = get_lm_size(waves)
   i = i%W
   if i==0:
@@ -163,18 +163,10 @@ def kmax_Pvec(E, Pvec, Mijk=[1,1,1]):
   Ecm2 = E**2-Psq
   sig_i_min = abs(Mj**2-Mk**2) + 2*get_xrange()[0] * (Mj+Mk) * min(Mj,Mk) / (1+get_epsH())
   u = 0.5 + (Mi**2-sig_i_min)/(2*Ecm2)
-  if u**2 - Mi**2/Ecm2 < 0:
-    print('uh oh', Pvec, sig_i_min,u)
-  return sqrt(Psq)*u + E*sqrt(u**2 - Mi**2/Ecm2) + 1e-14  # TB: small buffer to account for machine precision
+  # if u**2 - Mi**2/Ecm2 < 0:
+  #   print('uh oh', Pvec, sig_i_min,u)
+  return sqrt(Psq)*u + E*sqrt(u**2 - Mi**2/Ecm2) + 1e-14  # small buffer to account for machine precision
 
-# Find maximum norm(k) satisfying E2j*>=Mi+Mk for given E,Pvec
-def amax_Pvec_on(E,Pvec, Mijk=[1,1,1]):
-  [Mi, Mj, Mk] = Mijk
-  P = LA.norm(Pvec)
-  Ecm2 = E**2-P**2
-  sig_j_min = (Mi+Mk)**2
-  u = 0.5 + (Mj**2-sig_i_min)/(2*Ecm2)
-  return P*u + E*sqrt(u**2 - Mj**2/Ecm2) + 1e-14    # TB: small buffer to account for machine precision
 
 # Find energy where a certain nnk turns on for given L,nnP
 # Note: epsH and xmin must match those used in kmax_Pvec
@@ -199,39 +191,66 @@ def perms_list(nnk):
   return p_list
 
 
-# Get Oh shell that nnk is in (w/ our formatting convention)
-def get_shell(nnk):
-  a,b,c = sorted([abs(x) for x in nnk])
-  if a==0<b:
-    return [b,c,0]
-  else:
+# Get LG(P) orbit that nnk is in (w/ our formatting convention)
+def get_orbit(nnk, nnP):
+  x,y,z = nnP
+  a,b,c = nnk
+  # P=000
+  if x==y==z==0:
+    a,b,c = sorted([abs(r) for r in [a,b,c]])
+    # need to permute for aa0, ab0, aab
+    if (a==0<b) or (a<b==c):
+      return [b,c,a]
+    else:
+      return [a,b,c]
+  # 00z
+  elif x==y==0<z:
+    if a==0 or b==0:
+      b = max(abs(a),abs(b))
+      return [b,0,c]   # chose b0c over 0bc in paper
+    else:
+      a,b = sorted([abs(a),abs(b)])
+      return [a,b,c]
+  # xx0
+  elif x==y>0==z:
+    a,b = sorted([a,b])
+    return [a,b,abs(c)]
+  # xxx
+  elif x==y==z>0:
+    a,b,c = sorted([a,b,c])
+    return [a,b,c]
+  # xy0
+  elif z==0<x<y:
+    return [a,b,abs(c)]
+  # xxz
+  elif 0<x==y!=z>0:
+    a,b = sorted([a,b])
     return [a,b,c]
 
-# Create list of all nnk in a given shell
-#@jit()
-def shell_nnk_list(shell):
+# Create list of all nnk in a given Oh orbit
+def Oh_orbit_nnk_list(orbit):
   # 000
-  if list(shell)==[0,0,0]:
-    return [shell]
+  if list(orbit)==[0,0,0]:
+    return [orbit]
 
   # 00a
-  elif shell[0]==shell[1]==0<shell[2]:
-    a = shell[2]
+  elif orbit[0]==orbit[1]==0<orbit[2]:
+    a = orbit[2]
     return [(0,0,a),(0,a,0),(a,0,0),(0,0,-a),(0,-a,0),(-a,0,0)]
 
   # aa0
-  elif shell[0]==shell[1]>0==shell[2]:
-    a = shell[0]
+  elif orbit[0]==orbit[1]>0==orbit[2]:
+    a = orbit[0]
     return [(a,a,0),(a,0,a),(0,a,a),(a,-a,0),(a,0,-a),(0,a,-a),    (-a,-a,0),(-a,0,-a),(0,-a,-a),(-a,a,0),(-a,0,a),(0,-a,a)]
 
   # aaa
-  elif shell[0]==shell[1]==shell[2]>0:
-    a = shell[0]
+  elif orbit[0]==orbit[1]==orbit[2]>0:
+    a = orbit[0]
     return [(a,a,a),(a,a,-a),(a,-a,a),(-a,a,a), (-a,-a,-a),(-a,-a,a),(-a,a,-a),(a,-a,-a)]
 
   # ab0
-  elif 0==shell[2]<shell[0]<shell[1]:
-    a = shell[0]; b = shell[1]
+  elif 0==orbit[2]<orbit[0]<orbit[1]:
+    a = orbit[0]; b = orbit[1]
     return [
       (a,b,0),(b,a,0),(a,0,b),(b,0,a),(0,a,b),(0,b,a),
       (a,-b,0),(-b,a,0),(a,0,-b),(-b,0,a),(0,a,-b),(0,-b,a),
@@ -240,8 +259,8 @@ def shell_nnk_list(shell):
     ]
 
   # aab
-  elif 0<shell[0]==shell[1]!=shell[2]>0:
-    a = shell[0]; b = shell[2]
+  elif 0<orbit[0]==orbit[1]!=orbit[2]>0:
+    a = orbit[0]; b = orbit[2]
     return [
       (a,a,b),(a,b,a),(b,a,a),
       (a,a,-b),(a,-b,a),(-b,a,a),
@@ -255,82 +274,99 @@ def shell_nnk_list(shell):
     ]
 
   # abc
-  elif 0<shell[0]<shell[1]<shell[2]:
-    auxshell1 = perms_list(shell)
-    auxshell2 = 1*auxshell1
-    for i in range(len(auxshell1)):
-        auxshell2[i] = tuple([x*-1 for x in auxshell1[i]])
-    return auxshell1+auxshell2
+  elif 0<orbit[0]<orbit[1]<orbit[2]:
+    auxorbit1 = perms_list(orbit)
+    auxorbit2 = 1*auxorbit1
+    for i in range(len(auxorbit1)):
+        aux2[i] = tuple([x*-1 for x in auxorbit1[i]])
+    return auxorbit1+auxorbit2
 
   else:
-    print('Error in shell_nnk_list: Invalid shell input')
+    print('Error in Oh_orbit_nnk_list: Invalid orbit input')
 
+# Create list of all nnk in a given little group orbit
+def orbit_nnk_list(orbit,nnP):
+  x,y,z = nnP
+  a,b,c = orbit
+  # P=000
+  if x==y==z==0:
+    return Oh_orbit_nnk_list(orbit)
+  # 00z
+  elif x==y==0<z:
+    if a==b==0:
+      return [orbit]
+    elif a==0 or b==0:
+      a = max(abs(a),abs(b))
+      return [[a,0,c],[-a,0,c],[0,a,c],[0,-a,c]]
+    elif abs(a)==abs(b):
+      a = abs(a)
+      return [[a,a,c],[a,-a,c],[-a,a,c],[-a,-a,c]]
+    else:
+      a,b = sorted([abs(a),abs(b)])
+      return [[a,b,c],[a,-b,c],[-a,b,c],[-a,-b,c], [b,a,c],[b,-a,c],[-b,a,c],[-b,-a,c]]
+  # xx0
+  elif x==y>0==z:
+    if a==b and c==0:
+      return [[a,a,0]]
+    elif a==b and c!=0:
+      return [[a,a,c],[a,a,-c]]
+    elif a!=b and c==0:
+      return [[a,b,0],[b,a,0]]
+    else:
+      return [[a,b,c],[a,b,-c],[b,a,c],[b,a,-c]]
+  # xxx
+  elif x==y==z>0:
+    if a==b==c:
+      return [[a,a,a]]
+    elif a==b!=c:
+      return [[a,a,c],[a,c,a],[c,a,a]]
+    else:
+      return [[a,b,c],[a,c,b],[b,a,c],[b,c,a],[c,a,b],[c,b,a]]
+  # xy0
+  elif z==0<x<y:
+    if c==0:
+      return [[a,b,0]]
+    else:
+      return [[a,b,c],[a,b,-c]]
+  # xxz
+  elif 0<x==y!=z>0:
+    if a==b:
+      return [[a,a,c]]
+    else:
+      return [[a,b,c],[b,a,c]]
 
-# Create list of all nnk in a given shell which are "active"
-def shell_nnk_nnP_list(E,L,nnP,shell, Mijk=[1,1,1]):
-  Pvec = np.array(nnP)*2*pi/L
-  nnk_list=[]
-  for nnk in shell_nnk_list(shell): # TB: just do this instead of truncate()
-    if E > Emin_nnP(nnk, L, nnP, Mijk=Mijk): # TB: xmin needs to be same as in jj()
-      #print(nnk,LA.norm(nnk))
-      nnk_list.append(nnk)
-  return nnk_list
-
-
-# Create list of shells/orbits
-#@jit(fastmath=True,cache=True) # causes very, very bizarre issues
-def shell_list_nnP(E,L,nnP, Mijk=[1,1,1]):
+# Create list of LG(P) orbits
+def orbit_list_nnP(E,L,nnP, Mijk=[1,1,1]):
   Pvec = 2*pi/L * np.array(nnP)
   nmaxreal = kmax_Pvec(E,Pvec, Mijk=Mijk)*L/(2*pi)
   nmax = int(np.floor(nmaxreal))
-  shells = []
-  for n1 in range(nmax+1):
-    for n2 in range(n1,nmax+1):
-      for n3 in range(n2,nmax+1):
+  orbits = []
+  for n1 in range(-nmax,nmax+1):
+    for n2 in range(-nmax,nmax+1):
+      for n3 in range(-nmax,nmax+1):
         if square(n1)+square(n2)+square(n3) <= square(nmaxreal):
-          # need to permute for aa0, ab0, aab
-          if (n1==0<n2) or (n1>0 and n2==n3):
-            shells.append((n2,n3,n1))
-          else:
-            shells.append((n1,n2,n3))
+          nnk = [n1,n2,n3]
+          if E > Emin_nnP(nnk, L, nnP, Mijk=Mijk):
+            orb = get_orbit(nnk,nnP)
+            if orb not in orbits:
+              #print(orb, orbits)
+              orbits.append(orb)
   # Sort by magnitude
-  shells = sorted(shells, key=LA.norm)
-
-  out = []
-  for shell in shells:
-    if len(shell_nnk_nnP_list(E,L,nnP,shell, Mijk=Mijk))>0: # TB: gross and inefficient, but it works
-      out.append(shell)
-  #print(out)
-  return out
+  orbits = sorted(orbits, key=LA.norm)
+  #print(orbits)
+  return orbits
 
 
-# New nnk_list broken into shells
-def list_nnk_nnP(E,L,nnP, Mijk=[1,1,1]):
+# Create list of spectator momenta nnk_list broken into orbits
+def list_nnk_nnP(E,L,nnP, Mijk=[1,1,1], return_orbits=False):
   nnk_list = []
-  for shell in shell_list_nnP(E,L,nnP, Mijk=Mijk):
-    nnk_list += shell_nnk_nnP_list(E,L,nnP,shell, Mijk=Mijk) # TB: use this instead of truncate()
-  return nnk_list
-
-
-
-# Get tuple(nnk_list) from precomputed dictionary at a given Ecm
-def get_nnk_list(nnk_list_dict_nnP,Ecm,Ecm_max=5.2):
-  if Ecm > Ecm_max:
-    print('Error in get_nnk_list: Ecm outside grid range')
-    print('Ecm:',Ecm)
-    print('Ecm_max:',Ecm_max)
-    raise ValueError
-  nnk_list_tup = ()
-  flag = 0
-  for i,x in enumerate(nnk_list_dict_nnP):
-    if Ecm < x[0]:
-      if nnk_list_tup==(0,0,0):
-        return [(0,0,0)]
-      else:
-        return list(nnk_list_tup)
-    nnk_list_tup = x[1]
-  # print('Warning in get_nnk_list: nnk_list may not be in dictionary')
-  return list(nnk_list_tup)
+  orbit_list = orbit_list_nnP(E,L,nnP, Mijk=Mijk)
+  for orbit in orbit_list:
+    nnk_list += orbit_nnk_list(orbit, nnP)
+  if return_orbits==True:   # Option for also returning list of orbits
+    return nnk_list, orbit_list
+  else:
+    return nnk_list
 
 ####################################################################################
 # Real spherical harmonics
@@ -361,10 +397,6 @@ def y2real(kvec,m): # y2 = sqrt(4pi) * |kvec|**2 * Y2
   else:
     print('Error: invalid m input in y2real')
 
-#@jit(nopython=True,fastmath=True,parallel=True)
-# def y2(kvec,m):
-#   return y2real(kvec,m)
-
 # General spherical harmonic
 #@jit(nopython=True,fastmath=True,parallel=True)
 def ylm(kvec,l,m):
@@ -377,44 +409,49 @@ def ylm(kvec,l,m):
   else:
     print('Error: ylm can only take l=0,1,2')
 
-################################################################################
-# Extend scipy.interpolate.interp1d to handle matrices
-################################################################################
-def mat_interp(Ecm_list, mat_list, kind='cubic'):
-  if len(Ecm_list) == 3:
-    kind = 'quadratic'
-  elif len(Ecm_list) == 2:
-    kind = 'linear'
-  elif len(Ecm_list) == 1:
-    kind = 'nearest'
 
-  def f(i,j,Ecm):
-    mat_ij_list = np.array([mat[i,j] for mat in mat_list])
-    fij = interp1d(Ecm_list, mat_ij_list, kind=kind, bounds_error=False, fill_value='extrapolate')
-    return fij(Ecm)
 
-  N = len(mat_list[0])
-  out = lambda Ecm: np.array([[f(i,j,Ecm) for j in range(N)] for i in range(N)])
+############# Graveyard #############################
+# Create list of all nnk in a given shell which are "active"
+def shell_nnk_nnP_list(E,L,nnP,shell, Mijk=[1,1,1]):
+  Pvec = np.array(nnP)*2*pi/L
+  nnk_list=[]
+  for nnk in Oh_orbit_nnk_list(shell): # TB: just do this instead of truncate()
+    if E > Emin_nnP(nnk, L, nnP, Mijk=Mijk): # TB: xmin needs to be same as in jj()
+      #print(nnk,LA.norm(nnk))
+      nnk_list.append(nnk)
+  return nnk_list
+
+
+# Create list of shells/orbits
+def shell_list_nnP(E,L,nnP, Mijk=[1,1,1]):
+  Pvec = 2*pi/L * np.array(nnP)
+  nmaxreal = kmax_Pvec(E,Pvec, Mijk=Mijk)*L/(2*pi)
+  nmax = int(np.floor(nmaxreal))
+  shells = []
+  for n1 in range(nmax+1):
+    for n2 in range(n1,nmax+1):
+      for n3 in range(n2,nmax+1):
+        if square(n1)+square(n2)+square(n3) <= square(nmaxreal):
+          # need to permute for aa0, ab0, aab
+          if (n1==0<n2) or (n1>0 and n2==n3):
+            shells.append((n2,n3,n1))
+          else:
+            shells.append((n1,n2,n3))
+  # Sort by magnitude
+  shells = sorted(shells, key=LA.norm)
+
+  out = []
+  for shell in shells:
+    if len(shell_nnk_nnP_list(E,L,nnP,shell, Mijk=Mijk))>0: # TB: gross and inefficient, but it works
+      out.append(shell)
+  #print(out)
   return out
 
-################################################################################
-# Find energies in Ecm_list within max_diff of any point in Ecm_dat_list_nnP
-################################################################################
-def make_Ecm_list_nnP(Ecm_list, Ecm_dat_list_nnP, max_diff=0.01):
-  Ecm_list_nnP = []
-  idx_list_nnP = []
-  for i,Ecm in enumerate(Ecm_list):
-    if any([abs(Ecm-Ecm_dat)<max_diff for Ecm_dat in Ecm_dat_list_nnP]):
-      Ecm_list_nnP.append(Ecm)
-      idx_list_nnP.append(i)
-  return Ecm_list_nnP, idx_list_nnP
 
-####################################################################################
-# Graveyard (old functions)
-####################################################################################
-# # Assumes nnP=(000)
-# def list_nnk(E,L):
+# # New nnk_list broken into shells
+# def list_nnk_nnP(E,L,nnP, Mijk=[1,1,1]):
 #   nnk_list = []
-#   for shell in shell_list(E,L):
-#     nnk_list += shell_nnk_list(shell)
+#   for shell in shell_list_nnP(E,L,nnP, Mijk=Mijk):
+#     nnk_list += shell_nnk_nnP_list(E,L,nnP,shell, Mijk=Mijk)
 #   return nnk_list

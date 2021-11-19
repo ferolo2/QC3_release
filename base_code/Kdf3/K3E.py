@@ -80,20 +80,23 @@ def K3E_ij_pk(E,Pvec,pvec,kvec, i,j, M12=[1,1], waves_ij=('sp','sp')):
   elif i==j==1:
     out[0,0] += 2*M2**2 - 0.5*( Ecm2 - E*(om_pi+om_kj) + np.dot(Pvec,pvec+kvec) + om_pi*om_kj - np.dot(pvec,kvec)
                 - P2psk_0*kms_0 - P2ksp_0*pms_0 + gam_p*gam_k*(1-np.dot(beta_p_vec,beta_k_vec))*pms_0*kms_0 )
-    for m in range(-1,2):
-      out[m+2,0] += -1/3 * defns.y1real(P2ksp_vec + Vp,m)
-      out[0,m+2] += -1/3 * defns.y1real(P2psk_vec + V,m)
-    out[1:,1:] += -2/3*t
+    if waves_ij==('sp','sp'):
+      for m in range(-1,2):
+        out[m+2,0] += -1/3 * defns.y1real(P2ksp_vec + Vp,m)
+        out[0,m+2] += -1/3 * defns.y1real(P2psk_vec + V,m)
+      out[1:,1:] += -2/3*t
     return out / Mtot**2
 
   elif i==1 and j==2:
     out[0,0] += 2*M2**2 - (E-om_pi)*om_kj + np.dot(P2p_vec,kvec) + pms_0*om_ksp
-    for m in range(-1,2):
-      out[m+2,0] += -2/3 * defns.y1real(ksp_vec,m)
+    if waves_ij[0] == 'sp':
+      for m in range(-1,2):
+        out[m+2,0] += -2/3 * defns.y1real(ksp_vec,m)
     return out / Mtot**2
 
   elif i==2 and j==1:
     out[0,0] += 2*M2**2 - (E-om_kj)*om_pi + np.dot(P2k_vec,pvec) + kms_0*om_psk
-    for m in range(-1,2):
-      out[0,m+2] += -2/3 * defns.y1real(psk_vec,m)
+    if waves_ij[1] == 'sp':
+      for m in range(-1,2):
+        out[0,m+2] += -2/3 * defns.y1real(psk_vec,m)
     return out / Mtot**2

@@ -122,29 +122,13 @@ def Gmat_2plus1(E,L,nnP, M12=[1,1], nnk_lists_12=None, waves='sp'):
   G22 = np.zeros((N2_tot,N2_tot))
   Gfull = [[G11, G12],[G21, G22]]
   return defns.chop(np.block(Gfull))
-  #
-  # Gfull = []
-  # for i in range(2):
-  #   nnp_list = nnk_lists_123[i]
-  #   Ni_tot = len(nnp_list)*W
-  #   Gi_row = []
-  #   for j in range(2):
-  #     if j==i==1:
-  #       Gij_block = np.zeros((Ni_tot,Ni_tot))
-  #     elif j>i:
-  #       Mijk = defns.get_Mijk(M123,i,j=j)
-  #       nnk_list = nnk_lists_123[j]
-  #       Gij_block = sqrt(2)*Gmat_ij(E,L,nnP, Mijk=Mijk, nnp_list=nnp_list, nnk_list=nnk_list, waves=waves)
-  #     elif j<i:
-  #       Gij_block = Gfull[j][i].T
-  #     Gi_row.append(Gij_block)
-  #   Gfull.append(Gi_row)
-  # return defns.chop(np.block(Gfull))
+
 
 ################################################################################
-# Full ND matrix made of blocks Gtilde^{ij} = G^{ij}/(2*omega*L^3)
+# Full ND matrix made of blocks Gtilde^{ij} = G^{ij}/(2*omega*L^3); s-wave only
 ################################################################################
-def Gmat_ND(E,L,nnP, M123=[1,1,1], nnk_lists_123=None, waves='spd'):
+def Gmat_ND(E,L,nnP, M123=[1,1,1], nnk_lists_123=None):
+  waves = 's' # only use s-wave for ND case (Kdf3 isn't ready for p-wave)
   # Make lists of spectator momenta (if not input)
   if nnk_lists_123 == None:
     nnk_lists_123 = []
@@ -172,7 +156,7 @@ def Gmat_ND(E,L,nnP, M123=[1,1,1], nnk_lists_123=None, waves='spd'):
       elif j>i:
         Mijk = defns.get_Mijk(M123,i,j=j)
         nnk_list = nnk_lists_123[j]
-        Gij_block = Gmat_ij(E,L,nnP, Mijk=Mijk, nnp_list=nnp_list, nnk_list=nnk_list, waves=waves)
+        Gij_block = Gmat_ij(E,L,nnP, Mijk=Mijk, nnp_list=nnp_list, nnk_list=nnk_list, waves_ij=(waves,waves))
         # Apply parity factor
         if j==(i+1)%3:
           Gij_block = Gij_block @ PL_list[j]
@@ -185,25 +169,19 @@ def Gmat_ND(E,L,nnP, M123=[1,1,1], nnk_lists_123=None, waves='spd'):
     Gfull.append(Gi_row)
   return defns.chop(np.block(Gfull))
 
+
+
 ################################################################################
-# Graveyard (old code)
+# Full ID (identical particles) matrix Gtilde = G/(2*omega*L^3)
 ################################################################################
-# # Just compute l'=l=0 portion
-# # @jit(fastmath=True,cache=True)
-# def Gmat00(E,L,nnP):
-#   nnk_list = defns.list_nnk_nnP(E,L,nnP)
-#   N = len(nnk_list)
-# #  print(nnk_list)
-# #  print(list(nnk_list[0]))
-#
-#   Gfull = np.zeros((N,N))
-#   for p in range(N):
-# #    nnp = list(nnk_list[p])
-#     nnp = nnk_list[p]
-#     for k in range(N):
-# #      nnk = list(nnk_list[k])
-#       nnk = nnk_list[k]
-#       Gfull[p,k] = G(E,L,nparray(nnp),nparray(nnk),0,0,0,0,nparray(nnP))
-# #      print(nnk, nnp, Gfull[p,k])
-#
-#   return defns.chop(Gfull)
+def Gmat_ID(E,L,nnP, nnk_list=None):
+  waves = 's'   # only use s-wave for ID case (Kdf3 isn't ready for d-wave)
+  # Make lists of spectator momenta (if not input)
+  if nnk_list == None:
+    nnk_list = defns.list_nnk_nnP(E,L,nnP, Mijk=[1,1,1])
+
+  W = defns.get_lm_size(waves)
+  N_tot = len(nnk_list) * W
+
+  Gfull = Gmat_ij(E,L,nnP, Mijk=[1,1,1], nnp_list=nnk_list, nnk_list=nnk_list, waves_ij=(waves,waves))
+  return defns.chop(Gfull)

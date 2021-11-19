@@ -3,7 +3,7 @@
 ################################################################################
 # Standard python modules
 import numpy as np, sys, os
-np.set_printoptions(precision=3) 
+np.set_printoptions(precision=3)
 pi = np.pi; sqrt=np.sqrt; LA=np.linalg
 
 # Set up paths for loading QC modules
@@ -15,27 +15,29 @@ sys.path.insert(0,str(cwd/'base_code/Kdf3'))
 
 # QC modules
 import defns, group_theory_defns as GT, projections as proj
-from F3 import G_mov, F_fast, K2i_mat, qcot_fits, F3_mat
+from F3 import qcot_fits, F3_mat #, F_mat, G_mat, K2i_mat,
 from Kdf3 import K3main
 ################################################################################
 
 ################################################################################
-# Define 2+1 system parameters --- *ALWAYS SET M1=1*
+# Define 2+1 system parameters --- *MUST ALWAYS RESCALE SO THAT M1=1*
 ################################################################################
-M1,M2 = [1.,0.5];  # The 3-pt. system masses are [M1,M1,M2]
-M12 = [1.0,M2/M1]  # We always rescale by M1
-parity = -1        # Particle parity (-1 for pseudoscalars)
-L = 5              # Box size (in units of 1/M1)
-nnP = [0,0,0]      # 3-pt. FV spatial momentum (integer-valued)
-E = 3.1            # Total 3-pt. energy in moving frame (in units of M1)
+M1,M2 = [100.,50.]  # The 3-pt. system masses are [M1,M1,M2], e.g. in MeV
+M1,M2 = [1.,M2/M1]  # We always rescale by M1 to make everything dimensionless
+M12 = [M1,M2]
+parity = -1         # Particle parity (-1 for pseudoscalars)
+L = 5               # Box size (in units of 1/M1)
+nnP = [0,0,0]       # 3-pt. FV spatial momentum (integer-valued)
+Ecm = 3.1           # Total 3-pt. energy in CM frame (in units of M1)
+E = defns.E_to_Ecm(Ecm,L,nnP,rev=True) # Total 3-pt. energy in moving frame (in units of M1)
 ################################################################################
 # Define K2^{-1} parameters
 ################################################################################
-waves = 'sp'  # Partial waves used for dimers with flavor-1 spectators                                                                                    
-              # (flavor-2 spectators only use s-wave)                                                                                                                                     
-a_1s = 0.15    # s-wave scattering length for spectator-flavor-1 channel                                                                                                 
-r_1s = 0.0    # s-wave effective range for spectator-flavor-1 channel                                                                                                 
-a_1p = 0.2    # p-wave scattering length for spectator-flavor-1 channel                                                                                                                   
+waves = 'sp'  # Partial waves used for dimers with flavor-1 spectators
+              # (flavor-2 spectators only use s-wave)
+a_1s = 0.15   # s-wave scattering length for spectator-flavor-1 channel
+r_1s = 0.0    # s-wave effective range for spectator-flavor-1 channel
+a_1p = 0.2    # p-wave scattering length for spectator-flavor-1 channel
 a_2s = 0.1    # s-wave scattering length for spectator-flavor-2 channel
 ################################################################################
 # Define K2^{-1} phase shift functions
@@ -55,7 +57,7 @@ K3E_par = 300          # Parameter for Kdf3^E1 term
 ################################################################################
 nnk_list_1 = defns.list_nnk_nnP(E,L,nnP, Mijk=[M1,M1,M2])
 nnk_list_2 = defns.list_nnk_nnP(E,L,nnP, Mijk=[M2,M1,M1])
-print('flavor 1 spectators:\n',nnk_list_1)
+print('flavor 1 spectators:\n', nnk_list_1)
 print('flavor 2 spectators:\n', nnk_list_2)
 ################################################################################
 # Compute desired QC matrices
