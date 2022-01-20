@@ -13,7 +13,6 @@ import sys
 # Full projection matrices (P_I in notes)
 # Single orbit & single l for given nnP
 def P_irrep_o_l(nnP,I,orbit,l,Mijk=[1,1,1], parity=-1):
-  Lk = GT.little_group(orbit)
   d_I = GT.irrep_dim(I)
   W = 2*l+1
   LG = GT.little_group(nnP)

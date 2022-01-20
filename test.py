@@ -22,6 +22,7 @@ from Kdf3 import K3main
 ################################################################################
 # Define 2+1 system parameters --- *MUST ALWAYS RESCALE SO THAT M1=1*
 ################################################################################
+M1, M2 = M12
 M1,M2 = [100.,50.]  # The 3-pt. system masses are [M1,M1,M2], e.g. in MeV
 M1,M2 = [1.,M2/M1]  # We always rescale by M1 to make everything dimensionless
 M12 = [M1,M2]
@@ -72,8 +73,7 @@ QC3_mat = F3i + K3            # QC3 matrix as defined in the paper
 # Evaluate eigenvalues of the QC
 ################################################################################
 EV_QC3 = sorted(defns.chop(LA.eigvals(QC3_mat).real,tol=1e-9), key=abs)
-print('Eigenvalues of the QC:')
-print(np.array(EV_QC3))
+print('Eigenvalues of the QC:\n', np.array(EV_QC3))
 ################################################################################
 # Perform desired irrep projections
 ################################################################################
