@@ -576,17 +576,14 @@ def parity_irrep(Pvec,I):
 # Functions for finding free energies & decomposing into irreps
 ################################################################################
 # Sort list according to system's symmetry
-def sym_sort(my_list,sym, key=None):
+def sym_sort(my_list, sym, key=None):
   # if type(my_list[0]) == list:
   #   my_key = lambda vec: sum([x**2 for x in vec])
   # else:
   #   my_key = None
   if sym=='ID':
-    my_list.sort()
-  elif sym=='2+1':
-    my_list[:2] = sorted(my_list[:2])
+    my_list.sort(key=key)
   return tuple(my_list)
-
 
 # Find all 2pt. free energies with Ecm below Ecm_max for given L
 # Output is dictionary of form dict[(level,shell)] = [Ecm,degen,configs]
@@ -596,7 +593,8 @@ def free_levels_dict_2pt(M12,L,nnP,Ecm_max=4,sym='ID'):
   if not((sym=='ID' and M1==M2) or sym=='ND'):
     raise ValueError('Error: masses {} inconsistent with {} symmetry'.format(M12,sym))
 
-  Emax = sqrt(Ecm_max**2 + (2*pi/L)**2*sum([x**2 for x in nnP]))
+  norm2 = lambda vec: sum([x**2 for x in vec])
+  Emax = sqrt(Ecm_max**2 + (2*pi/L)**2*norm2(nnP))
   nmax = int(L/(2*pi) * sqrt(Emax*(Emax-2*M0))) # from assuming assuming 1 pt. at rest
 
   nvec_list = []
@@ -608,11 +606,11 @@ def free_levels_dict_2pt(M12,L,nnP,Ecm_max=4,sym='ID'):
 
   level_dict = {}
   for i1 in range(len(nvec_list)):
-    for i2 in range(len(nvec_list)):
+    #for i2 in range(len(nvec_list)):
       nvec1 = nvec_list[i1]
       nvec2 = [nnP[i]-nvec1[i] for i in range(3)]
 
-      config = sym_sort([nvec1,nvec2], sym)
+      config = sym_sort([nvec1,nvec2], sym, key=lambda vec: (norm2(vec), vec))  # sort by norm, then subsort if norms are equal (using whatever python's convention is)
 
       n1_2 = sum([x**2 for x in config[0]])
       n2_2 = sum([x**2 for x in config[1]])
@@ -624,6 +622,8 @@ def free_levels_dict_2pt(M12,L,nnP,Ecm_max=4,sym='ID'):
       Ecm = sqrt(E**2-(2*pi/L)**2*sum([x**2 for x in nnP]))
 
       if Ecm <= Ecm_max:
+        # level = sym_sort([n1_2,n2_2], sym)
+        # shell = sym_sort([tuple(sorted([abs(x) for x in nvec])) for nvec in config], sym, key=norm2)
         level = (n1_2,n2_2)
         shell = tuple([tuple(sorted([abs(x) for x in nvec])) for nvec in config])
         key = (level,shell)
@@ -649,7 +649,8 @@ def free_levels_dict_3pt(M123,L,nnP,Ecm_max=5,sym='ID'):
   if not((sym=='ID' and M1==M2==M3) or (sym=='2+1' and M1==M2!=M3) or sym=='ND'):
     raise ValueError('Error: masses {} inconsistent with {} symmetry'.format(M123,sym))
 
-  Emax = sqrt(Ecm_max**2 + (2*pi/L)**2*sum([x**2 for x in nnP]))
+  norm2 = lambda vec: sum([x**2 for x in vec])
+  Emax = sqrt(Ecm_max**2 + (2*pi/L)**2*norm2(nnP))
   nmax = int(L/(2*pi) * sqrt((Emax-M0)*(Emax-3*M0))) # from assuming assuming 2 pts. at rest
 
   nvec_list = []
@@ -667,9 +668,7 @@ def free_levels_dict_3pt(M123,L,nnP,Ecm_max=5,sym='ID'):
       nvec2 = nvec_list[i2]
       nvec12 = [nnP[i]-nvec1[i]-nvec2[i] for i in range(3)]
 
-      config = sym_sort([nvec1,nvec2,nvec12], sym)
-      # if nnP==[0,0,0] and sum([x**2 for x in nvec1])==sum([x**2 for x in nvec2])==1 and sum([x**2 for x in nvec12])==0:
-      #   print([nvec1,nvec2,nvec12], config)
+      config = sym_sort([nvec1,nvec2,nvec12], sym, key=lambda vec: (norm2(vec), vec))  # sort by norm, then subsort if norms are equal (using whatever python's convention is)
 
       n1_2 = sum([x**2 for x in config[0]])
       n2_2 = sum([x**2 for x in config[1]])
@@ -684,12 +683,11 @@ def free_levels_dict_3pt(M123,L,nnP,Ecm_max=5,sym='ID'):
 
       if Ecm <= Ecm_max:
         #print(nnP,config, [n1_2,n2_2,n12_2])
-        level = sym_sort([n1_2,n2_2,n12_2], sym)
-        shell = sym_sort([tuple(sorted([abs(x) for x in nvec])) for nvec in config], sym, key = lambda vec: sum([x**2 for x in vec]))
+        # level = sym_sort([n1_2,n2_2,n12_2], sym)
+        # shell = sym_sort([tuple(sorted([abs(x) for x in nvec])) for nvec in config], sym, key=norm_sort)
+        level = [n1_2,n2_2,n12_2]
+        shell = [tuple(sorted([abs(x) for x in nvec])) for nvec in config]
         key = (level,shell)
-        # if level==(1,0,1):
-        #   print(level,config,shell)
-          #sys.exit()
         if key in level_dict:
           if config not in level_dict[key][2]:
             level_dict[key][1] += 1
@@ -713,18 +711,21 @@ def level_characters(nnP, config_list, sym='ID', parity=-1):
   LG = little_group(nnP)
   cc_table = {}
   N_pt = len(config_list[0])
+  norm2 = lambda vec: sum([x**2 for x in vec])
   for p in LG:
     cc = conj_class(p)
     if cc not in cc_table:
       cc_table[cc] = [1,0,p]
       for config in config_list:
-        new_config = sym_sort([cubic_transf(vec,p) for vec in config], sym)
+        new_config = sym_sort([cubic_transf(vec,p) for vec in config], sym, key=lambda vec: (norm2(vec), vec)) # sort by norm, then subsort if norms are equal (using whatever python's convention is)
         if new_config == config:
           cc_table[cc][1] += 1
       if cc[0] in 'siS':
         cc_table[cc][1] = parity**N_pt * cc_table[cc][1]  # Note: assumes odd intrinsic parity by default
     else:
       cc_table[cc][0] += 1
+  #print(config_list, cc_table)
+  #sys.exit()
   return cc_table
 
 # Computes irrep decomposition given characters of an arbitrary representation
@@ -733,43 +734,39 @@ def irrep_decomp(nnP,cc_table, tex=False):
   N = len(little_group(nnP))
   out = ''
   irreps = []
+  N_configs = cc_table['E'][1]
+  total_weights = 0
   for I in irrep_list(nnP):
     prod = 0
     for cc in cc_table:
       (n,x,p) = cc_table[cc]
       prod += n*x * chi(p,I,nnP)
     weight = prod/N
+    if abs(weight-round(weight)) > 1e-14:
+      ValueError('Error in GT.irrep_decomp: non-integer irrep weight for nnP={}, I={} (weight={}) \n cc_table={}'.format(nnP,I,weight,cc_table))
+    else:
+      weight = round(weight)
     if weight != 0:
       #print(weight)
+      total_weights += weight * irrep_dim(I)
       if tex == True:
-        if int(weight)==1:
+        if weight==1:
           out += '{} \\oplus '.format(irrep_tex(I))
         else:
           out += '{}{} \\oplus '.format(int(weight),irrep_tex(I))
       else:
-        #out += '{}*{} + '.format(int(weight),I)
-        irreps.append((I,int(weight)))
+        #out += '{}*{} + '.format(weight,I)
+        irreps.append((I,weight))
+  if N_configs != total_weights:
+    ValueError('Error in GT.irrep_decomp: number of configs inconsistent with irrep decomp -- N_configs={}, decomp={} (total_weights={})'.format(N_configs,irreps,total_weights))
   if tex == True:
     return '${}$'.format(out[:-8])
   else:
     return irreps #out[:-3]
 
 
-# Compute all free 3-pt. CM energy levels below Ecm_max, including degeneracies & irrep decomps
-def free_levels_decomp_3pt(M123,L,nnP,Ecm_max=5,sym='ID',parity=-1):
-  level_dict = free_levels_dict_3pt(M123,L,nnP,Ecm_max=Ecm_max,sym=sym)
-  Ecm_decomp_list = []
-  for key in level_dict:
-    (level, shell) = key
-    (Ecm, degen, configs) = level_dict[key]
-    # print(level,Ecm,degen)
-    cc_table = level_characters(nnP,configs, sym=sym,parity=parity)
-    decomp = irrep_decomp(nnP,cc_table, tex=False)
-    Ecm_decomp_list.append((Ecm,degen,decomp))
-  return Ecm_decomp_list
-
 # Compute all free 2-pt. CM energy levels below Ecm_max, including degeneracies & irrep decomps
-def free_levels_decomp_2pt(M12,L,nnP,Ecm_max=4,sym='ID',parity=-1):
+def free_levels_decomp_2pt(M12,L,nnP,Ecm_max=4,sym='ID',parity=-1,tex=False):
   level_dict = free_levels_dict_2pt(M12,L,nnP,Ecm_max=Ecm_max,sym=sym)
   Ecm_decomp_list = []
   for key in level_dict:
@@ -777,6 +774,20 @@ def free_levels_decomp_2pt(M12,L,nnP,Ecm_max=4,sym='ID',parity=-1):
     (Ecm, degen, configs) = level_dict[key]
     # print(level,Ecm,degen)
     cc_table = level_characters(nnP,configs, sym=sym,parity=parity)
-    decomp = irrep_decomp(nnP,cc_table, tex=False)
+    decomp = irrep_decomp(nnP,cc_table, tex=tex)
+    Ecm_decomp_list.append((Ecm,degen,decomp))
+  return Ecm_decomp_list
+
+
+# Compute all free 3-pt. CM energy levels below Ecm_max, including degeneracies & irrep decomps
+def free_levels_decomp_3pt(M123,L,nnP,Ecm_max=5,sym='ID',parity=-1,tex=False):
+  level_dict = free_levels_dict_3pt(M123,L,nnP,Ecm_max=Ecm_max,sym=sym)
+  Ecm_decomp_list = []
+  for key in level_dict:
+    (level, shell) = key
+    (Ecm, degen, configs) = level_dict[key]
+    # print(level,Ecm,degen)
+    cc_table = level_characters(nnP,configs, sym=sym,parity=parity)
+    decomp = irrep_decomp(nnP,cc_table, tex=tex)
     Ecm_decomp_list.append((Ecm,degen,decomp))
   return Ecm_decomp_list
