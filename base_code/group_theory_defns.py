@@ -685,8 +685,8 @@ def free_levels_dict_3pt(M123,L,nnP,Ecm_max=5,sym='ID'):
         #print(nnP,config, [n1_2,n2_2,n12_2])
         # level = sym_sort([n1_2,n2_2,n12_2], sym)
         # shell = sym_sort([tuple(sorted([abs(x) for x in nvec])) for nvec in config], sym, key=norm_sort)
-        level = [n1_2,n2_2,n12_2]
-        shell = [tuple(sorted([abs(x) for x in nvec])) for nvec in config]
+        level = (n1_2,n2_2,n12_2)
+        shell = tuple([tuple(sorted([abs(x) for x in nvec])) for nvec in config])
         key = (level,shell)
         if key in level_dict:
           if config not in level_dict[key][2]:
