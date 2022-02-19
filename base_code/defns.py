@@ -217,8 +217,8 @@ def get_orbit(nnk, nnP):
     return [a,b,abs(c)]
   # xxx
   elif x==y==z>0:
-    # TB: should fix the 0aa and 0ab issues that Steve found
-    a,b,c = sorted([a,b,c], key=abs)
+    a,b,c = sorted([a,b,c])          # SS: fix for the (-a,a,a) issue
+    a,b,c = sorted([a,b,c], key=abs) # TB: fix for the 0aa and 0ab issues
     if a==0!=b:
       b,c = sorted([b,c])
       return [b,c,0]  # e.g. [1,1,0], [-1,1,0], [-2,-1,0]
