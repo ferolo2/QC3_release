@@ -199,11 +199,11 @@ def F_full_ID_scratch(E,nnP,L, nnk_list=None, diag_only=True):
   if nnk_list == None:
     nnk_list = defns.list_nnk_nnP(E,L,nnP)
   # Divide by 2 for Bose symmetry
-  F_diag = 0.5*F_i_full_scratch(E,np.array(nnP),L, Mijk=[1,1,1], waves=waves, nnk_list=nnk_list, diag_only=True)
+  F_diag = F_i_full_scratch(E,np.array(nnP),L, Mijk=[1,1,1], waves=waves, nnk_list=nnk_list, diag_only=True)
   if diag_only==True:
-    return F_diag
+    return 0.5*np.array(F_diag)
   else:
-    return block_diag(*F_diag)
+    return 0.5*block_diag(*F_diag)
 
 
 ################################################################################
