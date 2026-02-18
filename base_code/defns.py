@@ -286,7 +286,7 @@ def Oh_orbit_nnk_list(orbit):
     auxorbit1 = perms_list(orbit)
     auxorbit2 = 1*auxorbit1
     for i in range(len(auxorbit1)):
-        aux2[i] = tuple([x*-1 for x in auxorbit1[i]])
+        auxorbit2[i] = tuple([x*-1 for x in auxorbit1[i]])
     return auxorbit1+auxorbit2
 
   else:
