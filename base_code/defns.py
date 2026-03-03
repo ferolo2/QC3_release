@@ -222,7 +222,8 @@ def get_orbit(nnk, nnP):
     if a==0!=b:
       b,c = sorted([b,c])
       return [b,c,0]  # e.g. [1,1,0], [-1,1,0], [-2,-1,0]
-    elif a<b==c:
+    #elif a<b==c:
+	elif b==c and abs(a)<=abs(b):
       return [b,b,a]  # e.g. [2,2,1], [-2,-2,1]
     else:
       return [a,b,c]
